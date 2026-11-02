@@ -435,6 +435,11 @@ void MSWindowsComputer::getShape(int32_t &x, int32_t &y, int32_t &w, int32_t &h)
   h = m_h;
 }
 
+deskflow::MonitorList MSWindowsComputer::getMonitors() const
+{
+  return m_monitors;
+}
+
 void MSWindowsComputer::getCursorPos(int32_t &x, int32_t &y) const
 {
   m_desks->getCursorPos(x, y);
@@ -1317,12 +1322,13 @@ bool MSWindowsComputer::onDisplayChange()
 {
   // computer resolution may have changed.  save old shape.
   int32_t xOld = m_x, yOld = m_y, wOld = m_w, hOld = m_h;
+  const auto monitorsOld = m_monitors;
 
   // update shape
   updateComputerShape();
 
-  // do nothing if resolution hasn't changed
-  if (xOld != m_x || yOld != m_y || wOld != m_w || hOld != m_h) {
+  // do nothing if resolution and monitor arrangement haven't changed
+  if (xOld != m_x || yOld != m_y || wOld != m_w || hOld != m_h || monitorsOld != m_monitors) {
     if (m_isPrimary) {
       if (!m_isOnComputer) {
         LOG_VERBOSE("centering cursor on display change: %+d, %+d", m_xCenter, m_yCenter);
@@ -1428,6 +1434,15 @@ bool MSWindowsComputer::ignore() const
   return (m_mark != m_markReceived);
 }
 
+namespace {
+BOOL CALLBACK collectMonitor(HMONITOR, HDC, LPRECT rect, LPARAM data)
+{
+  auto *list = reinterpret_cast<deskflow::MonitorList *>(data);
+  list->push_back({rect->left, rect->top, rect->right - rect->left, rect->bottom - rect->top});
+  return TRUE;
+}
+} // namespace
+
 void MSWindowsComputer::updateComputerShape()
 {
   // get shape and center
@@ -1440,6 +1455,17 @@ void MSWindowsComputer::updateComputerShape()
 
   // check for multiple monitors
   m_multimon = (m_w != GetSystemMetrics(SM_CXSCREEN) || m_h != GetSystemMetrics(SM_CYSCREEN));
+
+  // get the individual monitors.  the process is per-monitor DPI aware
+  // (Qt sets that up), so these are in the same physical pixel space as
+  // the virtual screen metrics and the mouse hook.
+  m_monitors.clear();
+  EnumDisplayMonitors(nullptr, nullptr, &collectMonitor, reinterpret_cast<LPARAM>(&m_monitors));
+  deskflow::monitors::normalize(m_monitors);
+  if (m_monitors.empty()) {
+    m_monitors.push_back({m_x, m_y, m_w, m_h});
+  }
+  LOG_DEBUG("monitors: %s", deskflow::monitors::toString(m_monitors).c_str());
 
   // tell the desks
   m_desks->setShape(m_x, m_y, m_w, m_h, m_xCenter, m_yCenter, m_multimon);

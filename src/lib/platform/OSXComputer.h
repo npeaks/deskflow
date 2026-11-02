@@ -58,6 +58,7 @@ public:
   void *getEventTarget() const override;
   bool getClipboard(ClipboardID id, IClipboard *) const override;
   void getShape(int32_t &x, int32_t &y, int32_t &width, int32_t &height) const override;
+  deskflow::MonitorList getMonitors() const override;
   void getCursorPos(int32_t &x, int32_t &y) const override;
 
   // IPrimaryComputer overrides
@@ -229,6 +230,7 @@ private:
 
   uint32_t m_activeSides = 0;
   // screen shape stuff
+  deskflow::MonitorList m_monitors;
   int32_t m_x, m_y;
   int32_t m_w, m_h;
   int32_t m_xCenter, m_yCenter;

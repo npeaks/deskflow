@@ -45,7 +45,7 @@ static const int16_t kProtocolMajorVersion = 1;
  * @note When incrementing the minor version, the Deskflow application version should also increment
  * @since Protocol version 1.0
  */
-static const int16_t kProtocolMinorVersion = 8;
+static const int16_t kProtocolMinorVersion = 9;
 
 /**
  * @brief Default TCP port for Deskflow connections
@@ -1161,6 +1161,39 @@ extern const char *const kMsgDSecureInputNotification;
  * @since Protocol version 1.8
  */
 extern const char *const kMsgDLanguageSynchronisation;
+
+/**
+ * @brief Monitor layout
+ *
+ * **Message Code**: `"DMON"`
+ * **Direction**: Secondary → Primary
+ * **Format**: `"DMON%4I"`
+ * **Parameters**:
+ * - `$1`: List of 4-byte integers, four per monitor: x, y, width, height
+ *   (signed values, sent as their two's complement bit pattern)
+ *
+ * **Example**:
+ *
+ * Two 1920x1080 monitors side by side
+ * ```
+ * "DMON\x00\x00\x00\x08" followed by 0,0,1920,1080,1920,0,1920,1080
+ * ```
+ *
+ * Describes the individual monitors that make up the secondary computer's
+ * shape, in the same coordinate space as kMsgDInfo.  Sent immediately
+ * before every kMsgDInfo, so the primary always has the monitors that go
+ * with the shape it is about to receive.  The primary uses them to find
+ * real monitor edges, to keep the cursor off areas no monitor covers,
+ * and to resolve per-monitor links in its configuration.
+ *
+ * Only sent to primaries that replied 1.9 or later in their hello.  A
+ * secondary that never sends it is treated as a single monitor covering
+ * its whole shape.
+ *
+ * @see kMsgDInfo
+ * @since Protocol version 1.9
+ */
+extern const char *const kMsgDMonitors;
 
 /** @} */ // end of protocol_system group
 

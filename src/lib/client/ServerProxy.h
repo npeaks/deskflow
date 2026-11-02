@@ -71,6 +71,17 @@ protected:
     return m_stream;
   }
 
+  Client *getClient() const
+  {
+    return m_client;
+  }
+
+  //! Send anything that must precede kMsgDInfo (nothing before 1.9)
+  virtual void sendMonitors()
+  {
+    // do nothing
+  }
+
 private:
   // if compressing mouse motion then send the last motion now
   void flushCompressedMouse();

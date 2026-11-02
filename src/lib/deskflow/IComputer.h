@@ -9,6 +9,7 @@
 #pragma once
 
 #include "deskflow/ClipboardTypes.h"
+#include "deskflow/MonitorLayout.h"
 
 class IClipboard;
 
@@ -49,6 +50,20 @@ public:
   \c y and the size of the computer in \c width and \c height.
   */
   virtual void getShape(int32_t &x, int32_t &y, int32_t &width, int32_t &height) const = 0;
+
+  //! Get monitors
+  /*!
+  Return the individual monitors that make up the computer's shape, in
+  canonical order (see deskflow::monitors::normalize()).  Computers that
+  don't know their monitors report a single monitor covering the whole
+  shape, which gives the classic one-rectangle behavior.
+  */
+  virtual deskflow::MonitorList getMonitors() const
+  {
+    deskflow::MonitorRect r;
+    getShape(r.x, r.y, r.w, r.h);
+    return {r};
+  }
 
   //! Get cursor position
   /*!

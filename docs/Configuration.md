@@ -271,6 +271,32 @@ This indicates that computer ''larry'' is to the right of computer ''moe'' (so m
 
 Note that links do not have to be symmetrical; for instance, here the edge between ''moe'' and ''curly'' maps to different ranges depending on if you're going up or down. In fact links don't have to be bidirectional. You can configure the right of ''moe'' to go to ''larry'' without a link from the left of ''larry'' to ''moe''. It's possible to configure a computer with no outgoing links; the cursor will get stuck on that computer unless you have a hot key configured to switch off of that computer.
 
+#### Monitor links
+
+By default a computer is treated as one rectangle: the smallest one that encloses all of its monitors, and links are on the edges of that rectangle. When monitors are different sizes or don't line up, parts of that rectangle have no monitor, and some real monitor edges aren't on it at all, so you can't link them.
+
+To link a particular monitor, add <code>@N</code> after the direction (the monitor you leave from) and/or after the computer name (the monitor you enter):
+```
+ {left|right|up|down}[@N][<range>] = name[@N][<range>]
+```
+
+With <code>@N</code>, the edge and its range are that monitor's instead of the whole computer's. Monitors are numbered from 1, from left to right (and top to bottom when two share a left edge). The server and client both log their monitors when they start, for example `monitors: 1: 0,0 2160x3840; 2: 2160,0 3840x2160`. Only clients running protocol 1.9 or later report their monitors; older clients have a single monitor 1 covering the whole computer.
+
+Only edges that face away from the desktop can be left from, so it's fine for a range to cover a part of an edge that touches another monitor: the cursor just moves onto that monitor there. Links without <code>@N</code> keep working as before, on the outer edges of the computer, and a monitor link takes precedence where both apply.
+
+```
+section: links
+	win:
+		down@2(0,60)    = mac@1
+		right@1(56,100) = mac@1
+	mac:
+		up@1            = win@2(0,60)
+		left@1          = win@1(56,100)
+end
+```
+
+Here ''win'' has a tall monitor 1 with a wide monitor 2 to its right, lined up at the top, and ''mac'' sits below the left part of monitor 2. Moving down off the left 60% of monitor 2 enters the top of ''mac'', and moving right off the lower part of monitor 1 (below where monitor 2 ends) enters the left of ''mac''. The ''mac'' links send the cursor back the same way.
+
 ### options section
 
 ''args'' is a list of lines of the form <code>name = value</code>. These set the global options.

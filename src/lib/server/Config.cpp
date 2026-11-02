@@ -16,6 +16,7 @@
 #include "net/SocketException.h"
 #include "server/Server.h"
 
+#include <algorithm>
 #include <assert.h>
 #include <cstdlib>
 #include <istream>
@@ -141,7 +142,7 @@ bool Config::addAlias(const std::string &canonical, const std::string &alias)
 
 bool Config::connect(
     const std::string &srcName, Direction srcSide, float srcStart, float srcEnd, const std::string &dstName,
-    float dstStart, float dstEnd
+    float dstStart, float dstEnd, int srcMonitor, int dstMonitor
 )
 {
   assert(srcSide >= Direction::FirstDirection && srcSide <= Direction::LastDirection);
@@ -153,8 +154,8 @@ bool Config::connect(
   }
 
   // add link
-  CellEdge srcEdge(srcSide, Interval(srcStart, srcEnd));
-  CellEdge dstEdge(dstName, srcSide, Interval(dstStart, dstEnd));
+  CellEdge srcEdge(srcSide, Interval(srcStart, srcEnd), srcMonitor);
+  CellEdge dstEdge(dstName, srcSide, Interval(dstStart, dstEnd), dstMonitor);
   return index->second.add(srcEdge, dstEdge);
 }
 
@@ -333,6 +334,42 @@ std::string Config::getNeighbor(const std::string &srcName, Direction srcSide, f
   }
 }
 
+std::optional<Config::LinkTarget>
+Config::getMonitorNeighbor(const std::string &srcName, int monitor, Direction srcSide, float position) const
+{
+  assert(srcSide >= Direction::FirstDirection && srcSide <= Direction::LastDirection);
+
+  if (monitor == kWholeComputer) {
+    return std::nullopt;
+  }
+
+  CellMap::const_iterator index = m_map.find(getCanonicalName(srcName));
+  if (index == m_map.end()) {
+    return std::nullopt;
+  }
+
+  const CellEdge *srcEdge;
+  const CellEdge *dstEdge;
+  if (!index->second.getLink(srcSide, position, srcEdge, dstEdge, monitor)) {
+    return std::nullopt;
+  }
+
+  LinkTarget target;
+  target.m_name = getCanonicalName(dstEdge->getName());
+  target.m_monitor = dstEdge->getMonitor();
+  target.m_position = dstEdge->inverseTransform(srcEdge->transform(position));
+  return target;
+}
+
+bool Config::hasMonitorNeighbor(const std::string &srcName, Direction srcSide) const
+{
+  CellMap::const_iterator index = m_map.find(getCanonicalName(srcName));
+  if (index == m_map.end()) {
+    return false;
+  }
+  return index->second.hasMonitorEdge(srcSide);
+}
+
 bool Config::hasNeighbor(const std::string &srcName, Direction srcSide) const
 {
   return hasNeighbor(srcName, srcSide, 0.0f, 1.0f);
@@ -480,6 +517,14 @@ InputFilter *Config::getInputFilter()
   return &m_inputFilter;
 }
 
+std::string Config::formatMonitor(int monitor)
+{
+  if (monitor == kWholeComputer) {
+    return "";
+  }
+  return deskflow::string::sprintf("@%d", monitor);
+}
+
 std::string Config::formatInterval(const Interval &x)
 {
   if (x.first == 0.0f && x.second == 1.0f) {
@@ -570,8 +615,10 @@ void Config::readSectionOptions(ConfigReadContext &s)
   while (s.readLine(line)) {
     if (line == "end") {
       return;
-    } else if (const auto l = QString::fromStdString(line).simplified();
-               !l.startsWith(QStringLiteral("keystroke")) && !l.startsWith(QStringLiteral("mousepress"))) {
+    } else if (
+        const auto l = QString::fromStdString(line).simplified();
+        !l.startsWith(QStringLiteral("keystroke")) && !l.startsWith(QStringLiteral("mousepress"))
+    ) {
       continue;
     }
 
@@ -629,9 +676,9 @@ void Config::readSectionOptions(ConfigReadContext &s)
 
 void Config::readSectionScreens(ConfigReadContext &s)
 {
-  qWarning(
-  ) << "Your server config has a screen section. Screens have moved to the general config this section will not be "
-       "parsed.";
+  qWarning()
+      << "Your server config has a screen section. Screens have moved to the general config this section will not be "
+         "parsed.";
   std::string line;
   std::string screen;
   while (s.readLine(line)) {
@@ -668,10 +715,12 @@ void Config::readSectionLinks(ConfigReadContext &s)
     } else if (computer.empty()) {
       throw ServerConfigReadException(s, "argument before first computer");
     } else {
-      // parse argument:  `<name>[(<s0>,<e0>)]=<value>[(<s1>,<e1>)]'
+      // parse argument:  `<name>[@<m0>][(<s0>,<e0>)]=<value>[@<m1>][(<s1>,<e1>)]'
       // the stuff in brackets is optional.  interval values must be
       // in the range [0,100] and start < end.  if not given the
-      // interval is taken to be (0,100).
+      // interval is taken to be (0,100).  @<m> picks a monitor
+      // (numbered from 1), in which case the edge and interval are
+      // that monitor's rather than the whole computer's.
       std::string::size_type i = 0;
       std::string side;
       std::string dstComputer;
@@ -684,6 +733,8 @@ void Config::readSectionLinks(ConfigReadContext &s)
       s.parseNameWithArgs("computer", line, "", i, dstComputer, dstArgs);
       Interval srcInterval(s.parseInterval(srcArgs));
       Interval dstInterval(s.parseInterval(dstArgs));
+      const int srcMonitor = s.parseMonitor(side);
+      const int dstMonitor = s.parseMonitor(dstComputer);
 
       // handle argument
       using enum Direction;
@@ -704,7 +755,8 @@ void Config::readSectionLinks(ConfigReadContext &s)
         throw ServerConfigReadException(s, "unknown computer name \"%{1}\"", dstComputer);
       }
       if (!connect(
-              computer, dir, srcInterval.first, srcInterval.second, dstComputer, dstInterval.first, dstInterval.second
+              computer, dir, srcInterval.first, srcInterval.second, dstComputer, dstInterval.first, dstInterval.second,
+              srcMonitor, dstMonitor
           )) {
         throw ServerConfigReadException(s, "overlapping range");
       }
@@ -715,9 +767,9 @@ void Config::readSectionLinks(ConfigReadContext &s)
 
 void Config::readSectionAliases(ConfigReadContext &s)
 {
-  qWarning(
-  ) << "Your server config has an alias section. Alias have moved to the general config this section will no be "
-       "parsed.";
+  qWarning()
+      << "Your server config has an alias section. Alias have moved to the general config this section will no be "
+         "parsed.";
   std::string line;
   while (s.readLine(line)) {
     if (line == "end") {
@@ -1014,36 +1066,43 @@ bool Config::Name::operator==(const std::string &name) const
 // Config::CellEdge
 //
 
-Config::CellEdge::CellEdge(Direction side, float position)
+Config::CellEdge::CellEdge(Direction side, float position, int monitor)
 {
-  init("", side, Interval(position, position));
+  init("", side, Interval(position, position), monitor);
 }
 
-Config::CellEdge::CellEdge(Direction side, const Interval &interval)
-{
-  assert(interval.first >= 0.0f);
-  assert(interval.second <= 1.0f);
-  assert(interval.first < interval.second);
-
-  init("", side, interval);
-}
-
-Config::CellEdge::CellEdge(const std::string &name, Direction side, const Interval &interval)
+Config::CellEdge::CellEdge(Direction side, const Interval &interval, int monitor)
 {
   assert(interval.first >= 0.0f);
   assert(interval.second <= 1.0f);
   assert(interval.first < interval.second);
 
-  init(name, side, interval);
+  init("", side, interval, monitor);
 }
 
-void Config::CellEdge::init(const std::string_view &name, Direction side, const Interval &interval)
+Config::CellEdge::CellEdge(const std::string &name, Direction side, const Interval &interval, int monitor)
+{
+  assert(interval.first >= 0.0f);
+  assert(interval.second <= 1.0f);
+  assert(interval.first < interval.second);
+
+  init(name, side, interval, monitor);
+}
+
+void Config::CellEdge::init(const std::string_view &name, Direction side, const Interval &interval, int monitor)
 {
   assert(side != Direction::NoDirection);
+  assert(monitor >= kWholeComputer);
 
   m_name = name;
   m_side = side;
   m_interval = interval;
+  m_monitor = monitor;
+}
+
+int Config::CellEdge::getMonitor() const
+{
+  return m_monitor;
 }
 
 Config::Interval Config::CellEdge::getInterval() const
@@ -1070,7 +1129,7 @@ bool Config::CellEdge::overlaps(const CellEdge &edge) const
 {
   const Interval &x = m_interval;
   const Interval &y = edge.m_interval;
-  if (m_side != edge.m_side) {
+  if (m_side != edge.m_side || m_monitor != edge.m_monitor) {
     return false;
   }
   return (x.first >= y.first && x.first < y.second) || (x.second > y.first && x.second <= y.second) ||
@@ -1094,6 +1153,9 @@ float Config::CellEdge::inverseTransform(float x) const
 
 bool Config::CellEdge::operator<(const CellEdge &o) const
 {
+  if (m_monitor != o.m_monitor) {
+    return m_monitor < o.m_monitor;
+  }
   if (static_cast<int>(m_side) < static_cast<int>(o.m_side)) {
     return true;
   } else if (static_cast<int>(m_side) > static_cast<int>(o.m_side)) {
@@ -1105,7 +1167,7 @@ bool Config::CellEdge::operator<(const CellEdge &o) const
 
 bool Config::CellEdge::operator==(const CellEdge &x) const
 {
-  return (m_side == x.m_side && m_interval == x.m_interval);
+  return (m_side == x.m_side && m_interval == x.m_interval && m_monitor == x.m_monitor);
 }
 
 //
@@ -1139,7 +1201,7 @@ void Config::Cell::remove(Direction side)
 void Config::Cell::remove(Direction side, float position)
 {
   for (auto j = m_neighbors.begin(); j != m_neighbors.end(); ++j) {
-    if (j->first.getSide() == side && j->first.isInside(position)) {
+    if (j->first.getMonitor() == kWholeComputer && j->first.getSide() == side && j->first.isInside(position)) {
       m_neighbors.erase(j);
       break;
     }
@@ -1183,20 +1245,29 @@ bool Config::Cell::overlaps(const CellEdge &edge) const
   return false;
 }
 
-bool Config::Cell::getLink(Direction side, float position, const CellEdge *&src, const CellEdge *&dst) const
+bool Config::Cell::getLink(
+    Direction side, float position, const CellEdge *&src, const CellEdge *&dst, int monitor
+) const
 {
-  CellEdge edge(side, position);
+  CellEdge edge(side, position, monitor);
   EdgeLinks::const_iterator i = m_neighbors.upper_bound(edge);
   if (i == m_neighbors.begin()) {
     return false;
   }
   --i;
-  if (i->first.getSide() == side && i->first.isInside(position)) {
+  if (i->first.getMonitor() == monitor && i->first.getSide() == side && i->first.isInside(position)) {
     src = &i->first;
     dst = &i->second;
     return true;
   }
   return false;
+}
+
+bool Config::Cell::hasMonitorEdge(Direction side) const
+{
+  return std::ranges::any_of(m_neighbors, [side](const auto &link) {
+    return link.first.getMonitor() != kWholeComputer && link.first.getSide() == side;
+  });
 }
 
 bool Config::Cell::operator==(const Cell &x) const
@@ -1262,8 +1333,10 @@ std::ostream &operator<<(std::ostream &s, const Config &config)
 
     for (Config::link_const_iterator link = config.beginNeighbor(computer), nend = config.endNeighbor(computer);
          link != nend; ++link) {
-      s << "\t\t" << Config::dirName(link->first.getSide()) << Config::formatInterval(link->first.getInterval())
-        << " = " << link->second.getName().c_str() << Config::formatInterval(link->second.getInterval()) << std::endl;
+      s << "\t\t" << Config::dirName(link->first.getSide()) << Config::formatMonitor(link->first.getMonitor())
+        << Config::formatInterval(link->first.getInterval()) << " = " << link->second.getName().c_str()
+        << Config::formatMonitor(link->second.getMonitor()) << Config::formatInterval(link->second.getInterval())
+        << std::endl;
     }
   }
   s << "end" << std::endl;
@@ -1363,6 +1436,24 @@ Config::Interval ConfigReadContext::parseInterval(const ArgList &args) const
   auto startInterval = static_cast<float>(startValue / 100.0f);
   auto endInterval = static_cast<float>(endValue / 100.0f);
   return Config::Interval(startInterval, endInterval);
+}
+
+int ConfigReadContext::parseMonitor(std::string &name) const
+{
+  const auto at = name.find('@');
+  if (at == std::string::npos) {
+    return Config::kWholeComputer;
+  }
+
+  const std::string number = name.substr(at + 1);
+  char *end = nullptr;
+  const long value = number.empty() ? 0 : strtol(number.c_str(), &end, 10);
+  if (number.empty() || end[0] != '\0' || value < 1 || value > 64) {
+    throw ServerConfigReadException(*this, "invalid monitor \"%{1}\"", name);
+  }
+
+  name.erase(at);
+  return static_cast<int>(value);
 }
 
 void ConfigReadContext::parseNameWithArgs(

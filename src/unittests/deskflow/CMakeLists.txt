@@ -46,6 +46,14 @@ create_test(
 )
 
 create_test(
+  NAME MonitorLayoutTests
+  DEPENDS app
+  LIBS arch base ${extra_libs}
+  SOURCE MonitorLayoutTests.cpp
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/deskflow"
+)
+
+create_test(
   NAME KeyboardLayoutManagerTests
   DEPENDS app
   LIBS arch base ${extra_libs}

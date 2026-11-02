@@ -14,6 +14,7 @@
 #include "deskflow/Computer.h"
 #include "deskflow/DeskflowException.h"
 #include "deskflow/IPlatformComputer.h"
+#include "deskflow/MonitorLayout.h"
 #include "deskflow/OptionTypes.h"
 #include "deskflow/PacketStreamFilter.h"
 #include "deskflow/ProtocolTypes.h"
@@ -335,6 +336,26 @@ std::string Server::getName(const BaseClientProxy *client) const
   return name;
 }
 
+namespace {
+Direction oppositeOf(Direction dir)
+{
+  switch (dir) {
+    using enum Direction;
+  case Left:
+    return Right;
+  case Right:
+    return Left;
+  case Top:
+    return Bottom;
+  case Bottom:
+    return Top;
+  case NoDirection:
+    break;
+  }
+  return Direction::NoDirection;
+}
+} // namespace
+
 uint32_t Server::getActivePrimarySides() const
 {
   using enum DirectionMask;
@@ -398,6 +419,9 @@ int32_t Server::getJumpZoneSize(const BaseClientProxy *client) const
 void Server::switchComputer(BaseClientProxy *dst, int32_t x, int32_t y, bool forScreensaver)
 {
   assert(dst != nullptr);
+
+  // never put the cursor somewhere no monitor covers
+  snapToMonitor(dst, x, y);
 
   int32_t dx;
   int32_t dy;
@@ -733,6 +757,137 @@ BaseClientProxy *Server::mapToNeighbor(BaseClientProxy *src, Direction srcSide, 
   avoidJumpZone(dst, srcSide, x, y);
 
   return dst;
+}
+
+BaseClientProxy *
+Server::mapToMonitorNeighbor(const BaseClientProxy *src, int monitor, Direction side, int32_t &x, int32_t &y) const
+{
+  // note -- must be locked on entry
+
+  const auto srcMonitors = src->getMonitors();
+  if (monitor < 0 || monitor >= static_cast<int>(srcMonitors.size())) {
+    return nullptr;
+  }
+
+  const std::string srcName = getName(src);
+  const float t = deskflow::monitors::toFraction(srcMonitors[monitor], side, x, y);
+  const auto target = m_config->getMonitorNeighbor(srcName, monitor + 1, side, t);
+  if (!target) {
+    return nullptr;
+  }
+
+  const auto index = m_clients.find(target->m_name);
+  if (index == m_clients.end()) {
+    LOG_VERBOSE(
+        "ignored \"%s\" on %s of \"%s\" monitor %d: not connected", target->m_name.c_str(), Config::dirName(side),
+        srcName.c_str(), monitor + 1
+    );
+    return nullptr;
+  }
+  BaseClientProxy *dst = index->second;
+
+  // we enter the destination on the edge facing the one we left by
+  const Direction entry = oppositeOf(side);
+  if (target->m_monitor == Config::kWholeComputer) {
+    deskflow::MonitorRect whole;
+    dst->getShape(whole.x, whole.y, whole.w, whole.h);
+    deskflow::monitors::fromFraction(whole, entry, target->m_position, x, y);
+  } else {
+    const auto dstMonitors = dst->getMonitors();
+    if (target->m_monitor > static_cast<int>(dstMonitors.size())) {
+      LOG_WARN(
+          "link from \"%s\" monitor %d goes to monitor %d of \"%s\", which only has %zu", srcName.c_str(), monitor + 1,
+          target->m_monitor, target->m_name.c_str(), dstMonitors.size()
+      );
+      return nullptr;
+    }
+    deskflow::monitors::fromFraction(dstMonitors[target->m_monitor - 1], entry, target->m_position, x, y);
+  }
+
+  LOG_VERBOSE(
+      "\"%s\"%s is on %s of \"%s\" monitor %d at %f", target->m_name.c_str(),
+      Config::formatMonitor(target->m_monitor).c_str(), Config::dirName(side), srcName.c_str(), monitor + 1, t
+  );
+  return dst;
+}
+
+BaseClientProxy *Server::findEdgeNeighbor(
+    BaseClientProxy *src, const deskflow::MonitorList &monitors, int monitor, Direction side, int32_t &x, int32_t &y
+) const
+{
+  // note -- must be locked on entry
+
+  assert(monitor >= 0 && monitor < static_cast<int>(monitors.size()));
+  const auto &m = monitors[monitor];
+
+  // keep the coordinate along the edge on the monitor we're leaving
+  int32_t xOn = x;
+  int32_t yOn = y;
+  deskflow::monitors::clamp(m, xOn, yOn);
+  if (side == Direction::Left || side == Direction::Right) {
+    y = yOn;
+  } else {
+    x = xOn;
+  }
+
+  // a link on this monitor wins
+  int32_t xNew = x;
+  int32_t yNew = y;
+  if (BaseClientProxy *dst = mapToMonitorNeighbor(src, monitor, side, xNew, yNew); dst != nullptr) {
+    x = xNew;
+    y = yNew;
+    return dst;
+  }
+
+  // otherwise the whole-computer links apply, but only on the outer
+  // boundary of the computer, which is where they always applied
+  if (!deskflow::monitors::isOnBoundsEdge(monitors, m, side)) {
+    LOG_VERBOSE("no link on %s of \"%s\" monitor %d", Config::dirName(side), getName(src).c_str(), monitor + 1);
+    return nullptr;
+  }
+  xNew = x;
+  yNew = y;
+  BaseClientProxy *dst = mapToNeighbor(src, side, xNew, yNew);
+  if (dst != nullptr) {
+    x = xNew;
+    y = yNew;
+  }
+  return dst;
+}
+
+void Server::snapToMonitor(const BaseClientProxy *dst, int32_t &x, int32_t &y) const
+{
+  const auto monitors = dst->getMonitors();
+  int index = deskflow::monitors::find(monitors, x, y);
+  if (index < 0) {
+    index = deskflow::monitors::nearest(monitors, x, y);
+    if (index < 0) {
+      return;
+    }
+    LOG_VERBOSE("moving entry point %d,%d onto monitor %d of \"%s\"", x, y, index + 1, getName(dst).c_str());
+    deskflow::monitors::clamp(monitors[index], x, y);
+  }
+
+  if (dst != m_primaryClient) {
+    return;
+  }
+  const int32_t z = getJumpZoneSize(dst);
+  if (z <= 0) {
+    return;
+  }
+
+  using enum Direction;
+  const auto &m = monitors[index];
+  if (x < m.x + z && deskflow::monitors::isExposed(monitors, index, Left, x, y)) {
+    x = std::min(m.x + z, m.x + m.w - 1);
+  } else if (x >= m.x + m.w - z && deskflow::monitors::isExposed(monitors, index, Right, x, y)) {
+    x = std::max(m.x + m.w - 1 - z, m.x);
+  }
+  if (y < m.y + z && deskflow::monitors::isExposed(monitors, index, Top, x, y)) {
+    y = std::min(m.y + z, m.y + m.h - 1);
+  } else if (y >= m.y + m.h - z && deskflow::monitors::isExposed(monitors, index, Bottom, x, y)) {
+    y = std::max(m.y + m.h - 1 - z, m.y);
+  }
 }
 
 void Server::avoidJumpZone(const BaseClientProxy *dst, Direction dir, int32_t &x, int32_t &y) const
@@ -1652,25 +1807,42 @@ bool Server::onMouseMovePrimary(int32_t x, int32_t y)
     yc = ay + ah - 1;
   }
 
-  // see if we should change computers
+  // find the monitor the cursor is on.  the hook can report positions
+  // slightly off the desktop so fall back to the nearest monitor.
+  const auto monitors = m_active->getMonitors();
+  int monitor = deskflow::monitors::find(monitors, x, y);
+  if (monitor < 0) {
+    monitor = deskflow::monitors::nearest(monitors, x, y);
+  }
+  if (monitor < 0) {
+    noSwitch(x, y);
+    return false;
+  }
+  const auto &mon = monitors[monitor];
+
+  // see if we should change computers.  only edges of the current
+  // monitor that face off the desktop count; anywhere else the cursor
+  // just moves onto the next monitor.  with a single monitor this is
+  // the whole computer's edge, as it always was.
   // when the cursor is in a corner, there may be a computer either
   // horizontally or vertically.  check both directions.
   using enum Direction;
+  using deskflow::monitors::isExposed;
   auto dirh = NoDirection;
   auto dirv = NoDirection;
   int32_t xh = x;
   int32_t yv = y;
-  if (x < ax + zoneSize) {
+  if (x < mon.x + zoneSize && isExposed(monitors, monitor, Left, x, y)) {
     xh -= zoneSize;
     dirh = Left;
-  } else if (x >= ax + aw - zoneSize) {
+  } else if (x >= mon.x + mon.w - zoneSize && isExposed(monitors, monitor, Right, x, y)) {
     xh += zoneSize;
     dirh = Right;
   }
-  if (y < ay + zoneSize) {
+  if (y < mon.y + zoneSize && isExposed(monitors, monitor, Top, x, y)) {
     yv -= zoneSize;
     dirv = Top;
-  } else if (y >= ay + ah - zoneSize) {
+  } else if (y >= mon.y + mon.h - zoneSize && isExposed(monitors, monitor, Bottom, x, y)) {
     yv += zoneSize;
     dirv = Bottom;
   }
@@ -1692,7 +1864,7 @@ bool Server::onMouseMovePrimary(int32_t x, int32_t y)
     x = xs.at(i);
     y = ys.at(i);
     // get jump destination
-    BaseClientProxy *newComputer = mapToNeighbor(m_active, dir, x, y);
+    BaseClientProxy *newComputer = findEdgeNeighbor(m_active, monitors, monitor, dir, x, y);
 
     // should we switch or not?
     if (isSwitchOkay(newComputer, dir, x, y, xc, yc)) {
@@ -1757,43 +1929,31 @@ void Server::onMouseMoveSecondary(int32_t dx, int32_t dy)
   m_x += dx;
   m_y += dy;
 
-  // get computer shape
+  // get computer shape and monitors
   int32_t ax;
   int32_t ay;
   int32_t aw;
   int32_t ah;
   m_active->getShape(ax, ay, aw, ah);
+  const auto monitors = m_active->getMonitors();
+
+  // the monitor the cursor was on before this motion
+  int current = deskflow::monitors::find(monitors, xOld, yOld);
+  if (current < 0) {
+    current = deskflow::monitors::nearest(monitors, xOld, yOld);
+  }
 
   // find direction of neighbor and get the neighbor
   bool jump = true;
   BaseClientProxy *newComputer;
+  int32_t newX = m_x;
+  int32_t newY = m_y;
   do {
-    // clamp position to computer
-    int32_t xc = m_x;
-    int32_t yc = m_y;
-    if (xc < ax) {
-      xc = ax;
-    } else if (xc >= ax + aw) {
-      xc = ax + aw - 1;
-    }
-    if (yc < ay) {
-      yc = ay;
-    } else if (yc >= ay + ah) {
-      yc = ay + ah - 1;
-    }
-
-    Direction dir;
     using enum Direction;
-    if (m_x < ax) {
-      dir = Left;
-    } else if (m_x > ax + aw - 1) {
-      dir = Right;
-    } else if (m_y < ay) {
-      dir = Top;
-    } else if (m_y > ay + ah - 1) {
-      dir = Bottom;
-    } else {
-      // we haven't left the computer
+    const int landing = deskflow::monitors::find(monitors, m_x, m_y);
+    if (landing >= 0 || current < 0) {
+      // we haven't left the computer (we may have moved onto another
+      // of its monitors)
       newComputer = m_active;
       jump = false;
 
@@ -1801,23 +1961,27 @@ void Server::onMouseMoveSecondary(int32_t dx, int32_t dy)
       // on then stop waiting.  also if it's not on the border
       // then arm the double tap.
       if (m_switchComputer != nullptr) {
+        deskflow::MonitorRect r{ax, ay, aw, ah};
+        if (landing >= 0) {
+          r = monitors[landing];
+        }
         bool clearWait;
         int32_t zoneSize = m_primaryClient->getJumpZoneSize();
         switch (m_switchDir) {
         case Left:
-          clearWait = (m_x >= ax + zoneSize);
+          clearWait = (m_x >= r.x + zoneSize);
           break;
 
         case Right:
-          clearWait = (m_x <= ax + aw - 1 - zoneSize);
+          clearWait = (m_x <= r.x + r.w - 1 - zoneSize);
           break;
 
         case Top:
-          clearWait = (m_y >= ay + zoneSize);
+          clearWait = (m_y >= r.y + zoneSize);
           break;
 
         case Bottom:
-          clearWait = (m_y <= ay + ah - 1 + zoneSize);
+          clearWait = (m_y <= r.y + r.h - 1 - zoneSize);
           break;
 
         default:
@@ -1834,26 +1998,48 @@ void Server::onMouseMoveSecondary(int32_t dx, int32_t dy)
       break;
     }
 
+    // we've moved off every monitor, so we crossed an edge of the
+    // monitor we were on.  find which.
+    const auto &mon = monitors[current];
+    int32_t xc = m_x;
+    int32_t yc = m_y;
+    deskflow::monitors::clamp(mon, xc, yc);
+
+    Direction dir;
+    if (m_x < mon.x) {
+      dir = Left;
+    } else if (m_x > mon.x + mon.w - 1) {
+      dir = Right;
+    } else if (m_y < mon.y) {
+      dir = Top;
+    } else {
+      dir = Bottom;
+    }
+
     // try to switch computer.  get the neighbor.
-    newComputer = mapToNeighbor(m_active, dir, m_x, m_y);
+    newComputer = findEdgeNeighbor(m_active, monitors, current, dir, newX, newY);
 
     // see if we should switch
-    if (!isSwitchOkay(newComputer, dir, m_x, m_y, xc, yc)) {
+    if (!isSwitchOkay(newComputer, dir, newX, newY, xc, yc)) {
       newComputer = m_active;
       jump = false;
     }
   } while (false);
 
   if (jump) {
-    int32_t newX = m_x;
-    int32_t newY = m_y;
-
     // switch computers
     switchComputer(newComputer, newX, newY, false);
   } else {
-    // same computer.  clamp mouse to edge.
+    // same computer.  keep the mouse on a monitor: the client can't
+    // show it anywhere else, so tracking it there only makes us lose
+    // sync with where the user sees it.
     m_x = xOld + dx;
     m_y = yOld + dy;
+    if (const int n = deskflow::monitors::nearest(monitors, m_x, m_y);
+        n >= 0 && deskflow::monitors::find(monitors, m_x, m_y) < 0) {
+      deskflow::monitors::clamp(monitors[n], m_x, m_y);
+      LOG_VERBOSE("clamp to monitor %d of \"%s\"", n + 1, getName(m_active).c_str());
+    }
     if (m_x < ax) {
       m_x = ax;
       LOG_VERBOSE("clamp to left of \"%s\"", getName(m_active).c_str());

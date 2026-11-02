@@ -14,6 +14,7 @@
 #include "deskflow/Clipboard.h"
 #include "deskflow/ClipboardTypes.h"
 #include "deskflow/KeyTypes.h"
+#include "deskflow/MonitorLayout.h"
 #include "deskflow/MouseTypes.h"
 #include "server/Config.h"
 
@@ -253,6 +254,25 @@ private:
   // adjusts x and y or neither to avoid ending up in a jump zone
   // after entering the client in the given direction.
   void avoidJumpZone(const BaseClientProxy *, Direction, int32_t &x, int32_t &y) const;
+
+  // lookup the computer linked to edge \p side of monitor \p monitor
+  // (a 0-based index into src's monitors) at x,y.  on success x,y are
+  // set to the entry point on the destination.  returns nullptr if that
+  // monitor has no link there or the destination isn't connected.
+  BaseClientProxy *
+  mapToMonitorNeighbor(const BaseClientProxy *src, int monitor, Direction side, int32_t &x, int32_t &y) const;
+
+  // find where leaving monitor \p monitor (0-based) of \p src across
+  // \p side at x,y leads: a link on that monitor first, then the classic
+  // whole-computer link if that monitor edge is on src's outer boundary.
+  // on success x,y are set to the entry point on the destination.
+  BaseClientProxy *findEdgeNeighbor(
+      BaseClientProxy *src, const deskflow::MonitorList &monitors, int monitor, Direction side, int32_t &x, int32_t &y
+  ) const;
+
+  // move x,y onto a monitor of \p dst and, if \p dst is the primary,
+  // out of any jump zone so we don't immediately switch away again.
+  void snapToMonitor(const BaseClientProxy *dst, int32_t &x, int32_t &y) const;
 
   // test if a switch is permitted.  this includes testing user
   // options like switch delay and tracking any state required to

@@ -17,6 +17,7 @@
 
 #include <iosfwd>
 #include <map>
+#include <optional>
 #include <set>
 
 namespace deskflow::server {
@@ -55,18 +56,27 @@ public:
   using ScreenOptions = std::map<OptionID, OptionValue>;
   using Interval = std::pair<float, float>;
 
+  //! Monitor number meaning "the whole computer" (the bounding box of all monitors)
+  static constexpr int kWholeComputer = 0;
+
+  /*!
+  One end of a link.  The interval is a portion of an edge.  If the edge
+  has a monitor number (1-based, see deskflow::monitors) then the edge and
+  the interval are that monitor's, otherwise they are the whole computer's.
+  */
   class CellEdge
   {
   public:
-    CellEdge(Direction side, float position);
-    CellEdge(Direction side, const Interval &);
-    CellEdge(const std::string &name, Direction side, const Interval &);
+    CellEdge(Direction side, float position, int monitor = kWholeComputer);
+    CellEdge(Direction side, const Interval &, int monitor = kWholeComputer);
+    CellEdge(const std::string &name, Direction side, const Interval &, int monitor = kWholeComputer);
     ~CellEdge() = default;
 
     Interval getInterval() const;
     void setName(const std::string_view &newName);
     std::string getName() const;
     Direction getSide() const;
+    int getMonitor() const;
     bool overlaps(const CellEdge &) const;
     bool isInside(float x) const;
 
@@ -76,19 +86,28 @@ public:
     // transform [0,1] to position
     float inverseTransform(float x) const;
 
-    // compares side and start of interval
+    // compares monitor, side and start of interval
     bool operator<(const CellEdge &) const;
 
-    // compares side and interval
+    // compares monitor, side and interval
     bool operator==(const CellEdge &) const;
 
   private:
-    void init(const std::string_view &name, Direction side, const Interval &);
+    void init(const std::string_view &name, Direction side, const Interval &, int monitor);
 
   private:
     std::string m_name;
     Direction m_side;
     Interval m_interval;
+    int m_monitor = kWholeComputer;
+  };
+
+  //! Where a link leads
+  struct LinkTarget
+  {
+    std::string m_name;             //!< canonical name of the destination computer
+    int m_monitor = kWholeComputer; //!< destination monitor, or kWholeComputer
+    float m_position = 0.0f;        //!< position along the destination edge, [0,1]
   };
 
 private:
@@ -121,7 +140,10 @@ private:
     bool hasEdge(const CellEdge &) const;
     bool overlaps(const CellEdge &) const;
 
-    bool getLink(Direction side, float position, const CellEdge *&src, const CellEdge *&dst) const;
+    bool getLink(
+        Direction side, float position, const CellEdge *&src, const CellEdge *&dst, int monitor = kWholeComputer
+    ) const;
+    bool hasMonitorEdge(Direction side) const;
 
     bool operator==(const Cell &) const;
 
@@ -232,7 +254,7 @@ public:
   */
   bool connect(
       const std::string &srcName, Direction srcSide, float srcStart, float srcEnd, const std::string &dstName,
-      float dstStart, float dstEnd
+      float dstStart, float dstEnd, int srcMonitor = kWholeComputer, int dstMonitor = kWholeComputer
   );
 
   //! Disconnect computers
@@ -321,6 +343,21 @@ public:
   */
   std::string getNeighbor(const std::string &, Direction, float position, float *positionOut) const;
 
+  //! Get monitor neighbor
+  /*!
+  Like getNeighbor() but for a link on the given (1-based) monitor of the
+  source computer, where \c position is along that monitor's edge.  Returns
+  nothing if that monitor has no link there.
+  */
+  std::optional<LinkTarget> getMonitorNeighbor(const std::string &, int monitor, Direction, float position) const;
+
+  //! Check for monitor neighbor
+  /*!
+  Returns \c true if any monitor of the computer has a link on the edge
+  given by the direction.
+  */
+  bool hasMonitorNeighbor(const std::string &, Direction) const;
+
   //! Check for neighbor
   /*!
   Returns \c true if the computer has a neighbor anywhere along the edge
@@ -391,6 +428,9 @@ public:
   Returns an interval as a parseable string.
   */
   static std::string formatInterval(const Interval &);
+
+  //! Format a monitor qualifier: "" for the whole computer, "@N" otherwise
+  static std::string formatMonitor(int monitor);
   //@}
 
 private:
@@ -437,6 +477,8 @@ public:
   bool operator!() const;
 
   Config::Interval parseInterval(const ArgList &args) const;
+  //! Split a trailing "@N" monitor qualifier off \p name and return N (0 if none)
+  int parseMonitor(std::string &name) const;
   void parseNameWithArgs(
       const std::string &type, const std::string &line, const std::string &delim, std::string::size_type &index,
       std::string &name, ArgList &args

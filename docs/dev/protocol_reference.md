@@ -179,6 +179,7 @@ This table lists all protocol messages in alphabetical order. For a typical sequ
 | [**HelloArgs**](@ref kMsgHelloArgs) | @ref kMsgHelloArgs | Handshake | Internal | Hello message construction | [HelloSize](#constraint-max-hello), [MsgSize](#constraint-protocol-max-message-length) | 1.0+ |
 | [**HelloBack**](@ref kMsgHelloBack) | @ref kMsgHelloBack | Handshake | Client→Server | Client identification | [HelloSize](#constraint-max-hello), [MsgSize](#constraint-protocol-max-message-length), [HandshakeTimeout](#constraint-handshake-timeout) | 1.0+ |
 | [**HelloBackArgs**](@ref kMsgHelloBackArgs) | @ref kMsgHelloBackArgs | Handshake | Internal | HelloBack message construction | [HelloSize](#constraint-max-hello), [MsgSize](#constraint-protocol-max-message-length), [HandshakeTimeout](#constraint-handshake-timeout) | 1.0+ |
+| [**DMON**](@ref kMsgDMonitors) | @ref kMsgDMonitors | Data | Client→Server | Monitor layout | [MsgSize](#constraint-protocol-max-message-length), [ListSize](#constraint-max-list) | 1.9+ |
 | [**LSYN**](@ref kMsgDLanguageSynchronisation) | @ref kMsgDLanguageSynchronisation | Data | Server→Client | Language synchronization | [MsgSize](#constraint-protocol-max-message-length) | 1.8+ |
 | [**QINF**](@ref kMsgQInfo) | @ref kMsgQInfo | Query | Server→Client | Request computer info | [MsgSize](#constraint-protocol-max-message-length) | 1.0+ |
 | [**SECN**](@ref kMsgDSecureInputNotification) | @ref kMsgDSecureInputNotification | Data | Server→Client | Secure input notification | [MsgSize](#constraint-protocol-max-message-length) | 1.7+ |
@@ -292,6 +293,7 @@ A modifier (modifier mask) represents the state of modifier keys (like Shift, Co
 | **1.6** | Jan 2014 | Synergy | Clipboard streaming | 1.6+ |
 | **1.7** | Sep 2021 | Synergy | Secure input notifications | 1.7+ |
 | **1.8** | Nov 2021 | Synergy | Language synchronization | 1.8+ |
+| **1.9** | 2026 | Deskflow | Per-monitor layout (@ref kMsgDMonitors) | 1.9+ |
 
 ### Version Migration Guide
 

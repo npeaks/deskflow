@@ -242,6 +242,14 @@ void OSXComputer::getShape(int32_t &x, int32_t &y, int32_t &w, int32_t &h) const
   h = m_h;
 }
 
+deskflow::MonitorList OSXComputer::getMonitors() const
+{
+  if (m_monitors.empty()) {
+    return PlatformComputer::getMonitors();
+  }
+  return m_monitors;
+}
+
 void OSXComputer::getCursorPos(int32_t &x, int32_t &y) const
 {
   CGEventRef event = CGEventCreate(nullptr);
@@ -1331,12 +1339,19 @@ bool OSXComputer::updateComputerShape()
     return false;
   }
 
-  // get smallest rect enclosing all display rects
+  // get smallest rect enclosing all display rects, and remember each
+  // display.  display bounds are in points (the same space as cursor
+  // events), so retina scaling doesn't need any special handling.
   CGRect totalBounds = CGRectZero;
+  m_monitors.clear();
   for (CGDisplayCount i = 0; i < displayCount; ++i) {
     CGRect bounds = CGDisplayBounds(displays[i]);
     totalBounds = CGRectUnion(totalBounds, bounds);
+    m_monitors.push_back(
+        {(int32_t)bounds.origin.x, (int32_t)bounds.origin.y, (int32_t)bounds.size.width, (int32_t)bounds.size.height}
+    );
   }
+  deskflow::monitors::normalize(m_monitors);
 
   // get shape of default computer
   m_x = (int32_t)totalBounds.origin.x;
@@ -1358,6 +1373,7 @@ bool OSXComputer::updateComputerShape()
       "computer shape: center=%d,%d size=%dx%d on %u %s", m_x, m_y, m_w, m_h, displayCount,
       (displayCount == 1) ? "display" : "displays"
   );
+  LOG_DEBUG("monitors: %s", deskflow::monitors::toString(m_monitors).c_str());
 
   return true;
 }
