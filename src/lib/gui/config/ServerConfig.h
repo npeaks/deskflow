@@ -12,6 +12,7 @@
 #include "common/Hotkey.h"
 #include "gui/config/ComputerConfig.h"
 #include "gui/config/ComputerList.h"
+#include "gui/config/MonitorArrangement.h"
 
 #include <QList>
 
@@ -44,6 +45,22 @@ public:
   {
     return m_Hotkeys;
   }
+
+  //! Where each computer's monitors sit, used for links when it's enabled
+  const MonitorArrangement &arrangement() const
+  {
+    return m_arrangement;
+  }
+  MonitorArrangement &arrangement()
+  {
+    return m_arrangement;
+  }
+
+  /*!
+  Bring the arrangement up to date with the computers in the grid and the
+  monitors the server last reported for them.
+  */
+  void syncArrangement();
 
   bool save(const QString &fileName) const;
   bool computerExists(const QString &computerName) const;
@@ -85,6 +102,7 @@ private:
 
 private:
   HotkeyList m_Hotkeys;
+  MonitorArrangement m_arrangement;
 
   ComputerList m_computers;
   int m_columns;

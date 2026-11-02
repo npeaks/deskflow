@@ -745,6 +745,21 @@ Additionally, check you are able to %1 the server config file: %2</source>
     </message>
 </context>
 <context>
+    <name>MonitorArrangementView</name>
+    <message>
+        <source>Add computers on the Computers tab to arrange them here.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>(not seen yet)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Some monitors overlap. Move them apart so each edge only touches one neighbor.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>NewComputerWidget</name>
     <message>
         <source>Unnamed</source>
@@ -1097,6 +1112,58 @@ Enabling this setting will disable the server config GUI.</source>
     <message>
         <source>Enable lock to computer at startup</source>
         <translation type="unfinished">启动时启用锁定到计算机</translation>
+    </message>
+    <message>
+        <source>Switch using this monitor arrangement instead of the grid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Drag computers so their monitors sit the way they do on your desk. The cursor moves between computers wherever their monitors touch (highlighted). A computer shows its real monitors once it has connected to this server. Hold Shift while dragging to turn off snapping.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Make this computer&apos;s monitors bigger or smaller on the desk, to match their real size next to the others</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Rearrange</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Put every computer back in a row, in grid order</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Monitors</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The grid on the Computers tab is used for switching.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Monitors overlap.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No computers touch yet.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Size of %1:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a computer to change its size.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The cursor can cross at 1 place.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The cursor can cross at %1 places.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

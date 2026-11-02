@@ -198,6 +198,7 @@ public:
   Set the \c list to the names of the currently connected clients.
   */
   void getClients(std::vector<std::string> &list) const;
+  //! Sends the connected client names, and every connected computer's monitors, to the GUI
   void sendConnectedClientsIpc() const;
   size_t getMaximumClipboardSizeBytes() const;
 
@@ -254,6 +255,9 @@ private:
   // adjusts x and y or neither to avoid ending up in a jump zone
   // after entering the client in the given direction.
   void avoidJumpZone(const BaseClientProxy *, Direction, int32_t &x, int32_t &y) const;
+
+  // tell the GUI about a computer's monitors
+  void sendMonitorsIpc(const BaseClientProxy *client) const;
 
   // lookup the computer linked to edge \p side of monitor \p monitor
   // (a 0-based index into src's monitors) at x,y.  on success x,y are

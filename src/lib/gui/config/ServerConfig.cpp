@@ -52,7 +52,8 @@ bool ServerConfig::save(const QString &fileName) const
 bool ServerConfig::operator==(const ServerConfig &sc) const
 {
   return m_computers == sc.m_computers && //
-         m_Hotkeys == sc.m_Hotkeys;       //
+         m_Hotkeys == sc.m_Hotkeys &&     //
+         m_arrangement == sc.m_arrangement;
 }
 
 void ServerConfig::save(QFile &file) const
@@ -99,6 +100,52 @@ void ServerConfig::commit()
   settings().endArray();
 
   settings().endGroup();
+
+  Settings::setValue(Settings::Server::MonitorLayout, m_arrangement.enabled());
+  for (const auto &computer : m_arrangement.computers()) {
+    if (computer.placed) {
+      Settings::setValue(
+          Settings::Computer::DeskPlacement.arg(computer.name),
+          MonitorArrangement::formatPlacement(computer.position, computer.scale)
+      );
+    }
+  }
+}
+
+void ServerConfig::syncArrangement()
+{
+  QStringList names;
+  QHash<QString, QString> monitors;
+  for (const auto &computer : std::as_const(m_computers)) {
+    if (!computer.isNull()) {
+      names.append(computer.name());
+      monitors.insert(computer.name(), Settings::value(Settings::Computer::Monitors.arg(computer.name())).toString());
+    }
+  }
+  m_arrangement.setComputers(names, monitors);
+
+  for (const auto &name : std::as_const(names)) {
+    // the server may have reported new monitors since we last looked
+    if (const auto reported = MonitorArrangement::parseMonitors(monitors.value(name)); !reported.isEmpty()) {
+      m_arrangement.setMonitors(name, reported);
+    }
+
+    auto *computer = m_arrangement.computer(name);
+    if (computer == nullptr || computer->placed) {
+      continue;
+    }
+    QPointF position;
+    double scale = 1.0;
+    const auto placement = Settings::value(Settings::Computer::DeskPlacement.arg(name)).toString();
+    if (MonitorArrangement::parsePlacement(placement, position, scale)) {
+      computer->position = position;
+      computer->scale = scale;
+      computer->placed = true;
+    }
+  }
+
+  // names are in grid order, so new computers line up roughly as in the grid
+  m_arrangement.placeUnplaced(names);
 }
 
 void ServerConfig::recall()
@@ -135,6 +182,10 @@ void ServerConfig::recall()
   settings().endArray();
 
   settings().endGroup();
+
+  m_arrangement = MonitorArrangement();
+  m_arrangement.setEnabled(Settings::value(Settings::Server::MonitorLayout).toBool());
+  syncArrangement();
 }
 
 int ServerConfig::adjacentComputerIndex(int idx, int deltaColumn, int deltaRow) const
@@ -162,6 +213,14 @@ QTextStream &operator<<(QTextStream &outStream, const ServerConfig &config)
   for (int i = 0; const auto &computer : config.computers()) {
     if (!computer.isNull()) {
       outStream << "\t" << computer.name() << ":\n";
+      if (config.arrangement().enabled()) {
+        // links come from where the monitors touch in the arrangement
+        for (const auto &link : config.arrangement().links(computer.name())) {
+          outStream << "\t\t" << link << Qt::endl;
+        }
+        i++;
+        continue;
+      }
       for (const auto &neighbour : std::as_const(neighbourDirs)) {
         int idx = config.adjacentComputerIndex(i, neighbour.x, neighbour.y);
         if (idx != -1 && !config.computers()[idx].isNull())

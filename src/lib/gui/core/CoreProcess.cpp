@@ -638,6 +638,13 @@ void CoreProcess::onCoreIpcMessageReceived(const QString &command, const QString
   } else if (command == "connectedClients") {
     const auto clients = args.isEmpty() ? QStringList() : args.split(",");
     Q_EMIT connectedClientsChanged(clients);
+  } else if (command == "monitors") {
+    const auto separator = args.indexOf('=');
+    if (separator > 0) {
+      Q_EMIT monitorsReported(args.left(separator), args.mid(separator + 1));
+    } else {
+      qWarning("core ipc got malformed monitors: %s", qPrintable(args));
+    }
   } else if (command == "secureSocket") {
     Q_EMIT secureSocket(true);
     if (args != m_secureSocketVersion) {

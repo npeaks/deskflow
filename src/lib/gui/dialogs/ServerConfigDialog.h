@@ -16,6 +16,11 @@
 
 class SettingsDialogButtonBox;
 class QItemSelection;
+class QCheckBox;
+class QDoubleSpinBox;
+class QLabel;
+class QPushButton;
+class MonitorArrangementView;
 
 namespace Ui {
 class ServerConfigDialog;
@@ -68,6 +73,12 @@ protected:
   void toggleRelativeMouseMoves(bool enabled);
   void toggleProtocol();
 
+  void toggleMonitorLayout(bool enable);
+  void setMonitorScale(double scale);
+  void rearrangeMonitors();
+  void monitorSelectionChanged(const QString &name);
+  void monitorArrangementChanged();
+
   void toggleExternalConfig(bool enable = false);
   bool browseConfigFile();
 
@@ -85,6 +96,9 @@ protected:
   }
 
 private:
+  void setupMonitorTab();
+  void refreshMonitorTab();
+  void updateMonitorSummary() const;
   void save();
   void cancel();
   void loadFromConfig();
@@ -120,4 +134,12 @@ private:
   ServerConfig m_serverConfig;
   ComputerSetupModel m_computerSetupModel;
   SettingsDialogButtonBox *m_buttonBox = nullptr;
+
+  QWidget *m_tabMonitors = nullptr;
+  QCheckBox *m_cbMonitorLayout = nullptr;
+  MonitorArrangementView *m_monitorView = nullptr;
+  QLabel *m_lblMonitorScale = nullptr;
+  QDoubleSpinBox *m_sbMonitorScale = nullptr;
+  QPushButton *m_btnRearrangeMonitors = nullptr;
+  QLabel *m_lblMonitorSummary = nullptr;
 };

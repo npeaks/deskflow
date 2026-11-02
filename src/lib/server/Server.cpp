@@ -325,6 +325,22 @@ void Server::sendConnectedClientsIpc() const
     }
   }
   ipcSendToClient("connectedClients", clientList.join(","));
+
+  for (const auto &[name, client] : m_clients) {
+    sendMonitorsIpc(client);
+  }
+}
+
+void Server::sendMonitorsIpc(const BaseClientProxy *client) const
+{
+  // "name=x,y,w,h;x,y,w,h" -- computer names can't contain '=', ',' or ';'
+  QStringList rects;
+  for (const auto &m : client->getMonitors()) {
+    rects.append(QStringLiteral("%1,%2,%3,%4").arg(m.x).arg(m.y).arg(m.w).arg(m.h));
+  }
+  ipcSendToClient(
+      QStringLiteral("monitors"), QStringLiteral("%1=%2").arg(QString::fromStdString(getName(client)), rects.join(';'))
+  );
 }
 
 std::string Server::getName(const BaseClientProxy *client) const
@@ -1293,6 +1309,7 @@ void Server::handleShapeChanged(BaseClientProxy *client)
   }
 
   LOG_DEBUG("computer \"%s\" shape changed", getName(client).c_str());
+  sendMonitorsIpc(client);
 
   // update jump coordinate
   int32_t x;

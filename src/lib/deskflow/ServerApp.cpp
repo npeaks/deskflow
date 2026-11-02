@@ -375,6 +375,7 @@ bool ServerApp::startServer()
     m_listener = listener;
     LOG_DEBUG("started server, waiting for clients");
     ipcSendConnectionState(deskflow::core::ConnectionState::Listening);
+    m_server->sendConnectedClientsIpc();
     m_serverState = Started;
     return true;
   } catch (SocketAddressInUseException &e) {

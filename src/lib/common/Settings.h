@@ -113,6 +113,7 @@ public:
     inline static const auto ExternalConfigFile = QStringLiteral("server/externalConfigFile");
     inline static const auto GridHeight = QStringLiteral("server/gridHeight");
     inline static const auto GridWidth = QStringLiteral("server/gridWidth");
+    inline static const auto MonitorLayout = QStringLiteral("server/monitorLayout");
     inline static const auto Heartbeat = QStringLiteral("server/heartbeat");
     inline static const auto Protocol = QStringLiteral("server/protocol");
     inline static const auto RelativeMouseMoves = QStringLiteral("server/relativeMouseMoves");
@@ -126,6 +127,10 @@ public:
   struct Computer
   {
     inline static const auto Aliases = QStringLiteral("computer_%1/aliases");
+    //! Where the computer sits in the server's monitor arrangement: "x,y,scale"
+    inline static const auto DeskPlacement = QStringLiteral("computer_%1/deskPlacement");
+    //! The computer's monitors as last reported by the server: "x,y,w,h;x,y,w,h"
+    inline static const auto Monitors = QStringLiteral("computer_%1/monitors");
     inline static const auto Name = QStringLiteral("computer_%1/name");
     inline static const auto HalfDuplexCapsLock = QStringLiteral("computer_%1/halfDuplexCapsLock");
     inline static const auto HalfDuplexNumLock = QStringLiteral("computer_%1/halfDuplexNumLock");
@@ -329,6 +334,7 @@ private:
     , Server::ExternalConfigFile
     , Server::GridHeight
     , Server::GridWidth
+    , Server::MonitorLayout
     , Server::Heartbeat
     , Server::Protocol
     , Server::RelativeMouseMoves
@@ -361,6 +367,7 @@ private:
     , Server::EnableSwitchDelay
     , Server::EnableSwitchDoubleTap
     , Server::ExternalConfig
+    , Server::MonitorLayout
     , Server::RelativeMouseMoves
     , Server::XdpClipboardRetried
   };

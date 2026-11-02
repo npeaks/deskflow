@@ -16,10 +16,17 @@
 #include "dialogs/ActionDialog.h"
 #include "dialogs/ComputerSettingsDialog.h"
 #include "dialogs/HotkeyDialog.h"
+#include "gui/widgets/MonitorArrangementView.h"
 #include "gui/widgets/SettingsDialogButtonBox.h"
 
+#include <QCheckBox>
+#include <QDoubleSpinBox>
 #include <QFileDialog>
+#include <QHBoxLayout>
+#include <QLabel>
 #include <QMessageBox>
+#include <QPushButton>
+#include <QVBoxLayout>
 
 using enum ComputerConfig::SwitchCorner;
 
@@ -36,6 +43,7 @@ ServerConfigDialog::ServerConfigDialog(QWidget *parent, ServerConfig &config)
       m_buttonBox{new SettingsDialogButtonBox(this)}
 {
   ui->setupUi(this);
+  setupMonitorTab();
   ui->tabWidget->setCurrentIndex(0);
   layout()->addWidget(m_buttonBox);
 
@@ -424,7 +432,158 @@ void ServerConfigDialog::loadFromConfig()
   } else {
     server->markAsServer();
   }
+  refreshMonitorTab();
   updateControls();
+}
+
+void ServerConfigDialog::setupMonitorTab()
+{
+  m_tabMonitors = new QWidget(this);
+  auto *layout = new QVBoxLayout(m_tabMonitors);
+
+  m_cbMonitorLayout = new QCheckBox(tr("Switch using this monitor arrangement instead of the grid"), m_tabMonitors);
+  layout->addWidget(m_cbMonitorLayout);
+
+  auto *help = new QLabel(
+      tr("Drag computers so their monitors sit the way they do on your desk. The cursor moves between computers "
+         "wherever their monitors touch (highlighted). A computer shows its real monitors once it has connected to "
+         "this server. Hold Shift while dragging to turn off snapping."),
+      m_tabMonitors
+  );
+  help->setWordWrap(true);
+  layout->addWidget(help);
+
+  m_monitorView = new MonitorArrangementView(m_tabMonitors);
+  layout->addWidget(m_monitorView, 1);
+
+  auto *controls = new QHBoxLayout();
+  m_lblMonitorScale = new QLabel(m_tabMonitors);
+  controls->addWidget(m_lblMonitorScale);
+  m_sbMonitorScale = new QDoubleSpinBox(m_tabMonitors);
+  m_sbMonitorScale->setRange(0.1, 10.0);
+  m_sbMonitorScale->setSingleStep(0.05);
+  m_sbMonitorScale->setDecimals(2);
+  m_sbMonitorScale->setSuffix(QStringLiteral("\u00d7"));
+  m_sbMonitorScale->setToolTip(
+      tr("Make this computer's monitors bigger or smaller on the desk, to match their real size next to the others")
+  );
+  controls->addWidget(m_sbMonitorScale);
+  controls->addStretch();
+  m_lblMonitorSummary = new QLabel(m_tabMonitors);
+  controls->addWidget(m_lblMonitorSummary);
+  m_btnRearrangeMonitors = new QPushButton(tr("Rearrange"), m_tabMonitors);
+  m_btnRearrangeMonitors->setToolTip(tr("Put every computer back in a row, in grid order"));
+  controls->addWidget(m_btnRearrangeMonitors);
+  layout->addLayout(controls);
+
+  ui->tabWidget->insertTab(1, m_tabMonitors, tr("Monitors"));
+
+  connect(m_cbMonitorLayout, &QCheckBox::toggled, this, &ServerConfigDialog::toggleMonitorLayout);
+  connect(
+      m_sbMonitorScale, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ServerConfigDialog::setMonitorScale
+  );
+  connect(m_btnRearrangeMonitors, &QPushButton::clicked, this, &ServerConfigDialog::rearrangeMonitors);
+  connect(m_monitorView, &MonitorArrangementView::selectionChanged, this, &ServerConfigDialog::monitorSelectionChanged);
+  connect(
+      m_monitorView, &MonitorArrangementView::arrangementChanged, this, &ServerConfigDialog::monitorArrangementChanged
+  );
+  connect(&m_computerSetupModel, &ComputerSetupModel::computersChanged, this, &ServerConfigDialog::refreshMonitorTab);
+  connect(Settings::instance(), &Settings::settingsChanged, this, [this](const QString &key) {
+    // a computer connected (or changed its displays) while the dialog is open
+    if (key.startsWith(QStringLiteral("computer_")) && key.endsWith(QStringLiteral("/monitors"))) {
+      refreshMonitorTab();
+    }
+  });
+}
+
+void ServerConfigDialog::refreshMonitorTab()
+{
+  if (m_monitorView == nullptr) {
+    return;
+  }
+  auto &arrangement = serverConfig().arrangement();
+  serverConfig().syncArrangement();
+
+  m_cbMonitorLayout->blockSignals(true);
+  m_cbMonitorLayout->setChecked(arrangement.enabled());
+  m_cbMonitorLayout->blockSignals(false);
+
+  m_monitorView->setArrangement(&arrangement);
+  m_monitorView->setEnabled(arrangement.enabled());
+  m_btnRearrangeMonitors->setEnabled(arrangement.enabled());
+  if (arrangement.computer(m_monitorView->selectedComputer()) == nullptr) {
+    m_monitorView->setSelectedComputer({});
+  }
+  monitorSelectionChanged(m_monitorView->selectedComputer());
+  setButtonBoxEnabledButtons();
+}
+
+void ServerConfigDialog::updateMonitorSummary() const
+{
+  const auto &arrangement = m_serverConfig.arrangement();
+  if (!arrangement.enabled()) {
+    m_lblMonitorSummary->setText(tr("The grid on the Computers tab is used for switching."));
+  } else if (arrangement.hasOverlaps()) {
+    m_lblMonitorSummary->setText(tr("Monitors overlap."));
+  } else {
+    const auto crossings = arrangement.contacts().size();
+    m_lblMonitorSummary->setText(
+        crossings == 0   ? tr("No computers touch yet.")
+        : crossings == 1 ? tr("The cursor can cross at 1 place.")
+                         : tr("The cursor can cross at %1 places.").arg(crossings)
+    );
+  }
+}
+
+void ServerConfigDialog::toggleMonitorLayout(bool enable)
+{
+  serverConfig().arrangement().setEnabled(enable);
+  m_monitorView->setEnabled(enable);
+  m_btnRearrangeMonitors->setEnabled(enable);
+  monitorSelectionChanged(m_monitorView->selectedComputer());
+  setButtonBoxEnabledButtons();
+}
+
+void ServerConfigDialog::setMonitorScale(double scale)
+{
+  const auto name = m_monitorView->selectedComputer();
+  if (name.isEmpty()) {
+    return;
+  }
+  serverConfig().arrangement().setScale(name, scale);
+  m_monitorView->refit();
+  monitorArrangementChanged();
+}
+
+void ServerConfigDialog::rearrangeMonitors()
+{
+  serverConfig().arrangement().resetPlacements();
+  serverConfig().arrangement().placeUnplaced({});
+  m_monitorView->refit();
+  monitorArrangementChanged();
+}
+
+void ServerConfigDialog::monitorSelectionChanged(const QString &name)
+{
+  const auto *computer = serverConfig().arrangement().computer(name);
+  const bool editable = computer != nullptr && serverConfig().arrangement().enabled();
+  m_lblMonitorScale->setText(
+      computer != nullptr ? tr("Size of %1:").arg(name) : tr("Select a computer to change its size.")
+  );
+  m_sbMonitorScale->setVisible(computer != nullptr);
+  m_sbMonitorScale->setEnabled(editable);
+  if (computer != nullptr) {
+    m_sbMonitorScale->blockSignals(true);
+    m_sbMonitorScale->setValue(computer->scale);
+    m_sbMonitorScale->blockSignals(false);
+  }
+  updateMonitorSummary();
+}
+
+void ServerConfigDialog::monitorArrangementChanged()
+{
+  updateMonitorSummary();
+  setButtonBoxEnabledButtons();
 }
 
 void ServerConfigDialog::resetFromSettings()
@@ -633,5 +792,7 @@ void ServerConfigDialog::setButtonBoxEnabledButtons() const
   const bool writable = Settings::isWritable();
   m_buttonBox->enableSave(writable && (isGeneralConfigModified() || !(m_originalServerConfig == m_serverConfig)));
   m_buttonBox->enableReset(writable && (isGeneralConfigModified() || !(m_originalServerConfig == m_serverConfig)));
-  m_buttonBox->enableRestoreDefaults(writable && !isGeneralConfigDefault() && ui->tabWidget->currentIndex() == 2);
+  m_buttonBox->enableRestoreDefaults(
+      writable && !isGeneralConfigDefault() && ui->tabWidget->currentWidget() == ui->tabAdvanced
+  );
 }

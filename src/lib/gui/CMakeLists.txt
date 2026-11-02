@@ -38,6 +38,8 @@ add_library(${target} STATIC
   config/Computer.h
   config/ComputerList.cpp
   config/ComputerList.h
+  config/MonitorArrangement.cpp
+  config/MonitorArrangement.h
   config/ServerConfig.cpp
   config/ServerConfig.h
   core/CoreProcess.cpp
@@ -102,6 +104,8 @@ add_library(${target} STATIC
   widgets/KeySequenceWidget.cpp
   widgets/KeySequenceWidget.h
   widgets/LogDock.cpp
+  widgets/MonitorArrangementView.cpp
+  widgets/MonitorArrangementView.h
   widgets/LogDock.h
   widgets/LogWidget.h
   widgets/LogWidget.cpp
