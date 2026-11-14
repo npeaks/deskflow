@@ -24,7 +24,8 @@ void CoreIpcClient::sendStop()
 
 void CoreIpcClient::processCommand(const QString &command, const QStringList &parts)
 {
-  const auto args = parts.size() >= 2 ? parts.at(1) : QString();
+  // args may contain '=' themselves (e.g. "monitors=name=x,y,w,h"), so keep everything after the command
+  const auto args = parts.mid(1).join('=');
   Q_EMIT commandReceived(command, args);
 }
 

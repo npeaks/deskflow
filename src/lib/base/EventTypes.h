@@ -157,6 +157,8 @@ enum class EventTypes : uint32_t
   ServerAppReloadConfig,
   ServerAppForceReconnect,
   ServerAppResetServer,
+  /// The GUI connected to the core, so resend what it may have missed (connected clients, monitors).
+  ServerAppResendIpc,
 
   /// This event is sent when key is down. Event data is a pointer to KeyInfo (count == 1)
   KeyStateKeyDown,

@@ -544,6 +544,13 @@ int ServerApp::mainLoop()
 
   // to work around the sticky meta keys problem, we'll give users
   // the option to reset the state of the server.
+  // the gui may connect after the server started, and would miss what was sent then
+  getEvents()->addHandler(EventTypes::ServerAppResendIpc, getEvents()->getSystemTarget(), [this](const auto &) {
+    if (m_server != nullptr) {
+      m_server->sendConnectedClientsIpc();
+    }
+  });
+
   getEvents()->addHandler(EventTypes::ServerAppResetServer, getEvents()->getSystemTarget(), [this](const auto &) {
     resetServer();
   });

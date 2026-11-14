@@ -56,6 +56,7 @@ void IpcServer::handleNewConnection()
   connect(clientSocket, &QLocalSocket::readyRead, this, &IpcServer::handleReadyRead);
   connect(clientSocket, &QLocalSocket::disconnected, this, &IpcServer::handleDisconnected);
   connect(clientSocket, &QLocalSocket::errorOccurred, this, &IpcServer::handleErrorOccurred);
+  Q_EMIT clientConnected();
 }
 
 void IpcServer::handleReadyRead()

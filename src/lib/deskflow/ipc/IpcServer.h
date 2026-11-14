@@ -31,6 +31,8 @@ Q_SIGNALS:
   void startProcessRequested();
   void stopProcessRequested();
   void clearSettingsRequested();
+  //! A client (e.g. the GUI) connected, and may have missed earlier broadcasts
+  void clientConnected();
 
 protected:
   /**!

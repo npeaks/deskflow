@@ -125,6 +125,11 @@ int main(int argc, char **argv)
   QObject::connect(
       ipcServer, &deskflow::core::ipc::IpcServer::stopProcessRequested, coreApp, &App::quit, Qt::DirectConnection
   );
+  QObject::connect(
+      ipcServer, &deskflow::core::ipc::IpcServer::clientConnected, coreApp,
+      [&events] { events.addEvent(Event(EventTypes::ServerAppResendIpc, events.getSystemTarget())); },
+      Qt::DirectConnection
+  );
   ipcServer->listen();
 
   QThread coreThread;
