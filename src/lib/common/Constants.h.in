@@ -8,6 +8,8 @@
 #pragma once
 
 const auto kAppName = "@CMAKE_PROJECT_PROPER_NAME@";
+//! What the app is shown as; may differ from kAppName (e.g. "Deskflow Dev"), which settings paths use
+const auto kAppDisplayName = "@DESKFLOW_DISPLAY_NAME@";
 const auto kAppId = "@CMAKE_PROJECT_NAME@";
 const auto kAppDescription = "@CMAKE_PROJECT_DESCRIPTION@";
 const auto kDaemonBinName = "@CMAKE_PROJECT_NAME@-daemon";

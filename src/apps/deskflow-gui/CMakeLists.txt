@@ -11,15 +11,16 @@ endif()
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 if(WIN32)
-  set(EXE_DESCRIPTION "${CMAKE_PROJECT_PROPER_NAME} GUI configuration tool")
+  set(EXE_DESCRIPTION "${DESKFLOW_DISPLAY_NAME}")
   set(EXE_ICON "IDI_ICON1 ICON DISCARDABLE \"${CMAKE_SOURCE_DIR}/src/apps/res/deskflow.ico\" ")
   configure_file(${CMAKE_SOURCE_DIR}/src/apps/res/windows.rc.in deskflow.rc)
   set(platform_extra deskflow.rc)
 elseif(BUILD_OSX_BUNDLE)
   #setup our bundle plist file
-  set(BUNDLE_EXECUTABLE_NAME "${target}")
-  set(BUNDLE_BUNDLE_NAME "${target}")
-  set(BUNDLE_DISPLAY_NAME "${target}")
+  # the bundle is named after the display name, e.g. "Deskflow Dev.app"
+  set(BUNDLE_EXECUTABLE_NAME "${DESKFLOW_DISPLAY_NAME}")
+  set(BUNDLE_BUNDLE_NAME "${DESKFLOW_DISPLAY_NAME}")
+  set(BUNDLE_DISPLAY_NAME "${DESKFLOW_DISPLAY_NAME}")
   set(BUNDLE_GUI_IDENTIFIER "${CMAKE_PROJECT_REV_FQDN}")
   set(BUNDLE_ICON_FILE ${target}.icns)
   set(BUNDLE_INFO_STRING "${CMAKE_PROJECT_DESCRIPTION}")
@@ -40,6 +41,10 @@ add_executable(${target} WIN32 MACOSX_BUNDLE
   ../res/deskflow.qrc
   deskflow-gui.cpp
 )
+
+if(APPLE AND BUILD_OSX_BUNDLE)
+  set_target_properties(${target} PROPERTIES OUTPUT_NAME "${DESKFLOW_DISPLAY_NAME}")
+endif()
 
 target_link_libraries(
   ${target}

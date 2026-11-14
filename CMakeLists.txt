@@ -105,6 +105,11 @@ set(CMAKE_PROJECT_COPYRIGHT "(C) 2024-2026 ${CMAKE_PROJECT_VENDOR}")
 set(CMAKE_PROJECT_CONTACT "${CMAKE_PROJECT_PROPER_NAME} <maintainers@deskflow.org>")
 set(CMAKE_PROJECT_REV_FQDN "org.deskflow.deskflow")
 
+# What people see the app called (window title, tray, macOS bundle, Windows file description).
+# Settings, IPC names and file names keep CMAKE_PROJECT_PROPER_NAME, so a build named e.g.
+# "Deskflow Dev" shares its settings with an installed Deskflow.
+set(DESKFLOW_DISPLAY_NAME "${CMAKE_PROJECT_PROPER_NAME}" CACHE STRING "Name the app is shown as")
+
 #Unset the vars used in the project call
 unset(DESKFLOW_VERSION_MAJOR)
 unset(DESKFLOW_VERSION_MINOR)

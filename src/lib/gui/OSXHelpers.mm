@@ -6,6 +6,8 @@
 
 #import "OSXHelpers.h"
 
+#import "common/Constants.h"
+
 #import <Cocoa/Cocoa.h>
 #import <CoreData/CoreData.h>
 #import <Foundation/Foundation.h>
@@ -50,7 +52,13 @@ void requestOSXNotificationPermission()
 bool isOSXDevelopmentBuild()
 {
   std::string bundleURL = [[[NSBundle mainBundle] bundleURL].absoluteString UTF8String];
-  return (bundleURL.find("Applications/Deskflow.app") == std::string::npos);
+  // the bundle is named after the display name, and the URL escapes spaces ("Deskflow%20Dev.app")
+  std::string installed = "Applications/";
+  for (const char *c = kAppDisplayName; *c != '\0'; ++c) {
+    installed += (*c == ' ') ? std::string("%20") : std::string(1, *c);
+  }
+  installed += ".app";
+  return (bundleURL.find(installed) == std::string::npos);
 }
 
 bool showOSXNotification(const QString &title, const QString &body)

@@ -40,12 +40,16 @@ cmake -S . -B build -G Ninja \
   -DCMAKE_PREFIX_PATH="$(brew --prefix qt)" \
   -DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)" \
   -DBUILD_INSTALLER=OFF \
-  -DSKIP_BUILD_TESTS=ON
+  -DSKIP_BUILD_TESTS=ON \
+  -DDESKFLOW_DISPLAY_NAME="Deskflow Dev"
 cmake --build build
 ```
 
+`DESKFLOW_DISPLAY_NAME` names the app so it's easy to tell apart from the
+installed Deskflow. It still shares settings with the installed app.
+
 The first configure takes a minute; the build a few more. The result is
-`build/bin/Deskflow.app`, with `deskflow-core` inside it at
+`build/bin/Deskflow Dev.app`, with `deskflow-core` inside it at
 `Contents/MacOS/`. The app uses Homebrew's Qt and OpenSSL rather than
 bundling them, so it only runs on this Mac.
 
@@ -61,9 +65,9 @@ error in `src/lib/platform/OSXComputer.mm` is the most likely failure.
 ## 4. Run it
 
 1. Quit the installed Deskflow (menu bar icon → Quit) so only one copy runs.
-2. `open build/bin/Deskflow.app`
+2. `open "build/bin/Deskflow Dev.app"`
 3. Grant permissions when asked, or in **System Settings → Privacy & Security**:
-   - **Accessibility**: add `build/bin/Deskflow.app` and switch it on.
+   - **Accessibility**: add `build/bin/Deskflow Dev.app` and switch it on.
    - **Input Monitoring**: same.
 
    If Deskflow is already listed, remove it with **–** and add the new

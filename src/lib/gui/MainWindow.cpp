@@ -695,6 +695,7 @@ void MainWindow::setupTrayIcon()
   trayMenu->insertSeparator(m_actionMinimize);
   trayMenu->insertSeparator(m_actionTrayQuit);
   m_trayIcon->setContextMenu(trayMenu);
+  m_trayIcon->setToolTip(kAppDisplayName);
 
   setTrayIcon();
   m_trayIcon->show();
@@ -703,9 +704,9 @@ void MainWindow::setupTrayIcon()
 void MainWindow::applyConfig()
 {
   if (Settings::value(Settings::Gui::ShowVersionInTitle).toBool()) {
-    setWindowTitle(QStringLiteral("%1 - %2").arg(kAppName, kDisplayVersion));
+    setWindowTitle(QStringLiteral("%1 - %2").arg(kAppDisplayName, kDisplayVersion));
   } else {
-    setWindowTitle(kAppName);
+    setWindowTitle(kAppDisplayName);
   }
 
   if (const auto host = Settings::value(Settings::Client::RemoteHost).toString(); !host.isEmpty())
@@ -1063,7 +1064,7 @@ void MainWindow::updateText()
   m_actionQuit->setText(tr("&Quit"));
   m_actionTrayQuit->setText(tr("&Quit"));
   //: %1 will be the replaced with the appname
-  m_actionRestore->setText(tr("&Open %1").arg(kAppName));
+  m_actionRestore->setText(tr("&Open %1").arg(kAppDisplayName));
   m_actionSettings->setText(tr("&Preferences"));
   m_actionStartCore->setText(tr("&Start"));
   m_actionRestartCore->setText(tr("Rest&art"));
