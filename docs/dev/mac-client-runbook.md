@@ -19,11 +19,16 @@ brew install cmake ninja qt openssl@3
 
 ## 2. Get the code
 
+Download it from GitHub with git, which came with the command line tools in step 1:
+
 ```sh
-git clone git@github.com:npeaks/deskflow.git ~/src/deskflow
+git clone -b feat/per-monitor-layout https://github.com/npeaks/deskflow.git ~/src/deskflow
 cd ~/src/deskflow
-git checkout feat/per-monitor-layout
 ```
+
+HTTPS needs no SSH key on the Mac. If GitHub asks you to sign in (only for a
+private fork), use your GitHub username and a personal access token as the
+password, or run `gh auth login` first if you have the GitHub CLI.
 
 Already cloned? `git fetch && git checkout feat/per-monitor-layout && git pull`.
 
