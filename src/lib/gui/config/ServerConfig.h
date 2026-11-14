@@ -96,7 +96,6 @@ private:
   {
     return m_Hotkeys;
   }
-  int adjacentComputerIndex(int idx, int deltaColumn, int deltaRow) const;
   bool findComputerName(const QString &name, int &index);
   bool fixNoServer(const QString &name, int &index);
 

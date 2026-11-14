@@ -24,144 +24,9 @@
     <widget class="QTabWidget" name="tabWidget">
      <widget class="QWidget" name="tabComputers">
       <attribute name="title">
-       <string>Computers</string>
+       <string>Layout</string>
       </attribute>
-      <layout class="QVBoxLayout">
-       <property name="leftMargin">
-        <number>6</number>
-       </property>
-       <property name="topMargin">
-        <number>5</number>
-       </property>
-       <property name="rightMargin">
-        <number>6</number>
-       </property>
-       <property name="bottomMargin">
-        <number>5</number>
-       </property>
-       <item>
-        <layout class="QHBoxLayout" name="layoutComputers">
-         <property name="spacing">
-          <number>6</number>
-         </property>
-         <item>
-          <widget class="RemoveComputerWidget" name="lblRemoveComputer">
-           <property name="acceptDrops">
-            <bool>true</bool>
-           </property>
-           <property name="toolTip">
-            <string>Drag a computer from the grid to the trashcan to remove it.</string>
-           </property>
-           <property name="frameShape">
-            <enum>QFrame::Shape::StyledPanel</enum>
-           </property>
-           <property name="frameShadow">
-            <enum>QFrame::Shadow::Raised</enum>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <spacer name="horizontalSpacer_21">
-           <property name="orientation">
-            <enum>Qt::Orientation::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item>
-          <widget class="QLabel" name="label_2">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-             <horstretch>1</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>310</width>
-             <height>16777215</height>
-            </size>
-           </property>
-           <property name="text">
-            <string>Configure the layout of your computer displays by dragging to where you want.</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignmentFlag::AlignCenter</set>
-           </property>
-           <property name="wordWrap">
-            <bool>true</bool>
-           </property>
-           <property name="indent">
-            <number>-1</number>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <spacer name="horizontalSpacer_22">
-           <property name="orientation">
-            <enum>Qt::Orientation::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item>
-          <widget class="NewComputerWidget" name="lblNewComputer">
-           <property name="toolTip">
-            <string>Drag to the grid to add a new computer.</string>
-           </property>
-           <property name="frameShape">
-            <enum>QFrame::Shape::StyledPanel</enum>
-           </property>
-           <property name="frameShadow">
-            <enum>QFrame::Shadow::Raised</enum>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <spacer name="verticalSpacer">
-         <property name="orientation">
-          <enum>Qt::Orientation::Vertical</enum>
-         </property>
-         <property name="sizeType">
-          <enum>QSizePolicy::Policy::Fixed</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>10</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item>
-        <widget class="ComputerSetupView" name="computerSetupView">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="acceptDrops">
-          <bool>true</bool>
-         </property>
-         <property name="autoFillBackground">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-      </layout>
+      <layout class="QVBoxLayout" name="layoutTabComputers"/>
      </widget>
      <widget class="QWidget" name="tabHotkeys">
       <attribute name="title">
@@ -883,26 +748,7 @@ Enabling this setting will disable the server config GUI.</string>
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>ComputerSetupView</class>
-   <extends>QTableView</extends>
-   <header>widgets/ComputerSetupView.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>RemoveComputerWidget</class>
-   <extends>QLabel</extends>
-   <header>widgets/RemoveComputerWidget.h</header>
-  </customwidget>
-  <customwidget>
-   <class>NewComputerWidget</class>
-   <extends>QLabel</extends>
-   <header>widgets/NewComputerWidget.h</header>
-  </customwidget>
- </customwidgets>
  <tabstops>
-  <tabstop>computerSetupView</tabstop>
   <tabstop>listHotkeys</tabstop>
   <tabstop>btnNewHotkey</tabstop>
   <tabstop>btnEditHotkey</tabstop>

@@ -97,8 +97,6 @@ add_library(${target} STATIC
   validators/ValidationError.h
   validators/IpAddressValidator.cpp
   validators/IpAddressValidator.h
-  widgets/ComputerSetupView.cpp
-  widgets/ComputerSetupView.h
   widgets/FingerprintPreview.cpp
   widgets/FingerprintPreview.h
   widgets/KeySequenceWidget.cpp
@@ -109,10 +107,6 @@ add_library(${target} STATIC
   widgets/LogDock.h
   widgets/LogWidget.h
   widgets/LogWidget.cpp
-  widgets/NewComputerWidget.cpp
-  widgets/NewComputerWidget.h
-  widgets/RemoveComputerWidget.cpp
-  widgets/RemoveComputerWidget.h
   widgets/SearchWidget.h
   widgets/SearchWidget.cpp
   widgets/StatusBar.cpp

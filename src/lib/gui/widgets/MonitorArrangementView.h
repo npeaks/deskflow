@@ -45,12 +45,15 @@ Q_SIGNALS:
   //! The user moved a computer
   void arrangementChanged();
   void selectionChanged(const QString &name);
+  //! The user double clicked a computer
+  void computerActivated(const QString &name);
 
 protected:
   void paintEvent(QPaintEvent *event) override;
   void mousePressEvent(QMouseEvent *event) override;
   void mouseMoveEvent(QMouseEvent *event) override;
   void mouseReleaseEvent(QMouseEvent *event) override;
+  void mouseDoubleClickEvent(QMouseEvent *event) override;
   void resizeEvent(QResizeEvent *event) override;
 
 private:

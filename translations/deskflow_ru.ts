@@ -747,15 +747,15 @@ Additionally, check you are able to %1 the server config file: %2</source>
 <context>
     <name>MonitorArrangementView</name>
     <message>
-        <source>Add computers on the Computers tab to arrange them here.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>(not seen yet)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Some monitors overlap. Move them apart so each edge only touches one neighbor.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add a computer to arrange it here.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -764,7 +764,7 @@ Additionally, check you are able to %1 the server config file: %2</source>
     <message>
         <source>Unnamed</source>
         <extracomment>Used as the hostname. Translation may not contain spaces</extracomment>
-        <translation type="unfinished">Без_имени</translation>
+        <translation type="obsolete">Без_имени</translation>
     </message>
 </context>
 <context>
@@ -964,19 +964,19 @@ Additionally, check you are able to %1 the server config file: %2</source>
     </message>
     <message>
         <source>Computers</source>
-        <translation>Компьютеры</translation>
+        <translation type="vanished">Компьютеры</translation>
     </message>
     <message>
         <source>Drag a computer from the grid to the trashcan to remove it.</source>
-        <translation>Перетащите компьютер в корзину, чтобы удалить его.</translation>
+        <translation type="vanished">Перетащите компьютер в корзину, чтобы удалить его.</translation>
     </message>
     <message>
         <source>Configure the layout of your computer displays by dragging to where you want.</source>
-        <translation>Настройте расположение мониторов, перетаскивая их в нужные места.</translation>
+        <translation type="vanished">Настройте расположение мониторов, перетаскивая их в нужные места.</translation>
     </message>
     <message>
         <source>Drag to the grid to add a new computer.</source>
-        <translation>Перетащите на сетку, чтобы добавить компьютер.</translation>
+        <translation type="vanished">Перетащите на сетку, чтобы добавить компьютер.</translation>
     </message>
     <message>
         <source>Hotkeys</source>
@@ -1110,31 +1110,11 @@ Enabling this setting will disable the server config GUI.</source>
         <translation>Включать привязку к компьютеру при запуске</translation>
     </message>
     <message>
-        <source>Switch using this monitor arrangement instead of the grid</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Drag computers so their monitors sit the way they do on your desk. The cursor moves between computers wherever their monitors touch (highlighted). A computer shows its real monitors once it has connected to this server. Hold Shift while dragging to turn off snapping.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Make this computer&apos;s monitors bigger or smaller on the desk, to match their real size next to the others</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Rearrange</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Put every computer back in a row, in grid order</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Monitors</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>The grid on the Computers tab is used for switching.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1146,19 +1126,47 @@ Enabling this setting will disable the server config GUI.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Size of %1:</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Select a computer to change its size.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>The cursor can cross at 1 place.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>The cursor can cross at %1 places.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Layout</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Drag computers so their monitors sit the way they do on your desk. The cursor moves between computers wherever their monitors touch (highlighted). A computer shows its real monitors once it has connected to this server. Hold Shift while dragging to turn off snapping. Double click a computer to change its settings.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Add</source>
+        <translation type="unfinished">&amp;Добавить</translation>
+    </message>
+    <message>
+        <source>Add a computer that will connect to this one</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Change the name, aliases, keys and other settings of the selected computer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Put every computer back in a row, in list order</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 (this computer)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Size of %1 on the desk:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select a computer to change it.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

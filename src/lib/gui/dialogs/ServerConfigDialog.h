@@ -16,9 +16,9 @@
 
 class SettingsDialogButtonBox;
 class QItemSelection;
-class QCheckBox;
 class QDoubleSpinBox;
 class QLabel;
+class QListWidget;
 class QPushButton;
 class MonitorArrangementView;
 
@@ -40,7 +40,6 @@ public:
   }
 
 protected:
-  void onComputerRemoved();
   void addClient();
   bool addComputer(const QString &clientName, bool doSilent);
 
@@ -73,7 +72,8 @@ protected:
   void toggleRelativeMouseMoves(bool enabled);
   void toggleProtocol();
 
-  void toggleMonitorLayout(bool enable);
+  void editComputer(const QString &name);
+  void removeSelectedComputer();
   void setMonitorScale(double scale);
   void rearrangeMonitors();
   void monitorSelectionChanged(const QString &name);
@@ -96,9 +96,11 @@ protected:
   }
 
 private:
-  void setupMonitorTab();
-  void refreshMonitorTab();
+  void setupLayoutTab();
+  void refreshLayoutTab();
+  void refreshComputerList();
   void updateMonitorSummary() const;
+  Computer *findComputer(const QString &name);
   void save();
   void cancel();
   void loadFromConfig();
@@ -135,8 +137,10 @@ private:
   ComputerSetupModel m_computerSetupModel;
   SettingsDialogButtonBox *m_buttonBox = nullptr;
 
-  QWidget *m_tabMonitors = nullptr;
-  QCheckBox *m_cbMonitorLayout = nullptr;
+  QListWidget *m_listComputers = nullptr;
+  QPushButton *m_btnAddComputer = nullptr;
+  QPushButton *m_btnEditComputer = nullptr;
+  QPushButton *m_btnRemoveComputer = nullptr;
   MonitorArrangementView *m_monitorView = nullptr;
   QLabel *m_lblMonitorScale = nullptr;
   QDoubleSpinBox *m_sbMonitorScale = nullptr;

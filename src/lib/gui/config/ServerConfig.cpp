@@ -17,19 +17,6 @@
 using enum ComputerConfig::SwitchCorner;
 using enum ComputerConfig::Fix;
 
-static const struct
-{
-  int x;
-  int y;
-  const char *name;
-} neighbourDirs[] = {
-    {1, 0, "right"},
-    {-1, 0, "left"},
-    {0, -1, "up"},
-    {0, 1, "down"},
-
-};
-
 const int serverDefaultIndex = 7;
 
 ServerConfig::ServerConfig(int columns, int rows) : m_computers(columns), m_columns(columns), m_rows(rows)
@@ -101,7 +88,6 @@ void ServerConfig::commit()
 
   settings().endGroup();
 
-  Settings::setValue(Settings::Server::MonitorLayout, m_arrangement.enabled());
   for (const auto &computer : m_arrangement.computers()) {
     if (computer.placed) {
       Settings::setValue(
@@ -184,50 +170,21 @@ void ServerConfig::recall()
   settings().endGroup();
 
   m_arrangement = MonitorArrangement();
-  m_arrangement.setEnabled(Settings::value(Settings::Server::MonitorLayout).toBool());
   syncArrangement();
-}
-
-int ServerConfig::adjacentComputerIndex(int idx, int deltaColumn, int deltaRow) const
-{
-  if (computers()[idx].isNull())
-    return -1;
-
-  // if we're at the left or right end of the table, don't find results going
-  // further left or right
-  if ((deltaColumn > 0 && (idx + 1) % m_columns == 0) || (deltaColumn < 0 && idx % m_columns == 0))
-    return -1;
-
-  int arrayPos = idx + deltaColumn + deltaRow * m_columns;
-
-  if (arrayPos >= computers().size() || arrayPos < 0)
-    return -1;
-
-  return arrayPos;
 }
 
 QTextStream &operator<<(QTextStream &outStream, const ServerConfig &config)
 {
   outStream << "section: links" << Qt::endl;
 
-  for (int i = 0; const auto &computer : config.computers()) {
+  for (const auto &computer : config.computers()) {
     if (!computer.isNull()) {
       outStream << "\t" << computer.name() << ":\n";
-      if (config.arrangement().enabled()) {
-        // links come from where the monitors touch in the arrangement
-        for (const auto &link : config.arrangement().links(computer.name())) {
-          outStream << "\t\t" << link << Qt::endl;
-        }
-        i++;
-        continue;
-      }
-      for (const auto &neighbour : std::as_const(neighbourDirs)) {
-        int idx = config.adjacentComputerIndex(i, neighbour.x, neighbour.y);
-        if (idx != -1 && !config.computers()[idx].isNull())
-          outStream << "\t\t" << neighbour.name << " = " << config.computers()[idx].name() << Qt::endl;
+      // links come from where the monitors touch in the arrangement
+      for (const auto &link : config.arrangement().links(computer.name())) {
+        outStream << "\t\t" << link << Qt::endl;
       }
     }
-    i++;
   }
 
   outStream << "end" << Qt::endl << Qt::endl;

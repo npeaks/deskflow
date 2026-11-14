@@ -99,7 +99,7 @@ void MonitorArrangementView::paintEvent(QPaintEvent *)
 
   if (m_arrangement == nullptr || m_arrangement->computers().isEmpty()) {
     painter.setPen(palette().color(QPalette::PlaceholderText));
-    painter.drawText(rect(), Qt::AlignCenter, tr("Add computers on the Computers tab to arrange them here."));
+    painter.drawText(rect(), Qt::AlignCenter, tr("Add a computer to arrange it here."));
     return;
   }
 
@@ -217,6 +217,19 @@ void MonitorArrangementView::mouseReleaseEvent(QMouseEvent *event)
     if (m_moved) {
       refit();
     }
+  }
+}
+
+void MonitorArrangementView::mouseDoubleClickEvent(QMouseEvent *event)
+{
+  if (event->button() != Qt::LeftButton) {
+    QWidget::mouseDoubleClickEvent(event);
+    return;
+  }
+  m_dragging.clear();
+  if (const auto name = computerAt(event->position()); !name.isEmpty()) {
+    setSelectedComputer(name);
+    Q_EMIT computerActivated(name);
   }
 }
 

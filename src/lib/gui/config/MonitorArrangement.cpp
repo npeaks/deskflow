@@ -265,6 +265,16 @@ void MonitorArrangement::setScale(const QString &name, double scale)
   }
 }
 
+void MonitorArrangement::renameComputer(const QString &from, const QString &to)
+{
+  if (from == to || computer(to) != nullptr) {
+    return;
+  }
+  if (auto *c = computer(from); c != nullptr) {
+    c->name = to;
+  }
+}
+
 void MonitorArrangement::resetPlacements()
 {
   for (auto &c : m_computers) {

@@ -113,7 +113,6 @@ public:
     inline static const auto ExternalConfigFile = QStringLiteral("server/externalConfigFile");
     inline static const auto GridHeight = QStringLiteral("server/gridHeight");
     inline static const auto GridWidth = QStringLiteral("server/gridWidth");
-    inline static const auto MonitorLayout = QStringLiteral("server/monitorLayout");
     inline static const auto Heartbeat = QStringLiteral("server/heartbeat");
     inline static const auto Protocol = QStringLiteral("server/protocol");
     inline static const auto RelativeMouseMoves = QStringLiteral("server/relativeMouseMoves");
@@ -334,7 +333,6 @@ private:
     , Server::ExternalConfigFile
     , Server::GridHeight
     , Server::GridWidth
-    , Server::MonitorLayout
     , Server::Heartbeat
     , Server::Protocol
     , Server::RelativeMouseMoves
@@ -367,7 +365,6 @@ private:
     , Server::EnableSwitchDelay
     , Server::EnableSwitchDoubleTap
     , Server::ExternalConfig
-    , Server::MonitorLayout
     , Server::RelativeMouseMoves
     , Server::XdpClipboardRetried
   };

@@ -65,15 +65,6 @@ public:
   //! Edges this close snap together when dragging
   static constexpr double kSnapDistance = 60.0;
 
-  bool enabled() const
-  {
-    return m_enabled;
-  }
-  void setEnabled(bool enabled)
-  {
-    m_enabled = enabled;
-  }
-
   const QList<ArrangedComputer> &computers() const
   {
     return m_computers;
@@ -98,6 +89,9 @@ public:
   QPointF moveComputer(const QString &name, QPointF position, double snapDistance = kSnapDistance);
 
   void setScale(const QString &name, double scale);
+
+  //! Keep a computer's monitors and place when it's renamed
+  void renameComputer(const QString &from, const QString &to);
 
   //! Forget every position, so placeUnplaced() lays everything out again
   void resetPlacements();
@@ -128,6 +122,5 @@ public:
   bool operator==(const MonitorArrangement &) const = default;
 
 private:
-  bool m_enabled = false;
   QList<ArrangedComputer> m_computers;
 };

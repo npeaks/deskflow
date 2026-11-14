@@ -27,7 +27,6 @@ class Computer : public ComputerConfig
 {
   friend class ComputerSettingsDialog;
   friend class ComputerSetupModel;
-  friend class ComputerSetupView;
 
   friend QDataStream &operator<<(QDataStream &outStream, const Computer &computer)
   {

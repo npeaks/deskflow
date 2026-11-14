@@ -14,7 +14,6 @@ namespace {
 MonitorArrangement desk()
 {
   MonitorArrangement a;
-  a.setEnabled(true);
   a.setComputers({"win", "mac"}, {{"win", "2160,0,3840,2160;0,0,2160,3840"}, {"mac", "0,0,1512,982"}});
   a.moveComputer("win", {0, 0}, 0);
   a.moveComputer("mac", {2160, 2160}, 0);

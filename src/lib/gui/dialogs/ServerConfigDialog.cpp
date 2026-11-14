@@ -19,11 +19,12 @@
 #include "gui/widgets/MonitorArrangementView.h"
 #include "gui/widgets/SettingsDialogButtonBox.h"
 
-#include <QCheckBox>
 #include <QDoubleSpinBox>
 #include <QFileDialog>
+#include <QFormLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QListWidget>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QVBoxLayout>
@@ -43,15 +44,12 @@ ServerConfigDialog::ServerConfigDialog(QWidget *parent, ServerConfig &config)
       m_buttonBox{new SettingsDialogButtonBox(this)}
 {
   ui->setupUi(this);
-  setupMonitorTab();
+  setupLayoutTab();
   ui->tabWidget->setCurrentIndex(0);
   layout()->addWidget(m_buttonBox);
 
   loadFromConfig();
 
-  ui->lblRemoveComputer->setPixmap(QIcon::fromTheme("user-trash").pixmap(QSize(64, 64)));
-  ui->lblNewComputer->setEnabled(!model().isFull());
-  ui->lblNewComputer->setPixmap(QIcon::fromTheme("video-display").pixmap(QSize(64, 64)));
   ui->btnBrowseConfigFile->setIcon(QIcon::fromTheme(QIcon::ThemeIcon::DocumentOpen));
 
   if (!deskflow::platform::isWindows())
@@ -360,17 +358,11 @@ void ServerConfigDialog::addClient()
   addComputer("", false);
 }
 
-void ServerConfigDialog::onComputerRemoved()
-{
-  ui->lblNewComputer->setEnabled(true);
-  setButtonBoxEnabledButtons();
-}
-
 void ServerConfigDialog::toggleExternalConfig(bool checked)
 {
   ui->widgetExternalConfigControls->setEnabled(checked);
-  ui->tabWidget->setTabEnabled(0, !checked);
-  ui->tabWidget->setTabEnabled(1, !checked);
+  ui->tabWidget->setTabEnabled(ui->tabWidget->indexOf(ui->tabComputers), !checked);
+  ui->tabWidget->setTabEnabled(ui->tabWidget->indexOf(ui->tabHotkeys), !checked);
   serverConfig().setUseExternalConfig(checked);
   setButtonBoxEnabledButtons();
 }
@@ -418,8 +410,6 @@ void ServerConfigDialog::loadFromConfig()
   for (const Hotkey &hotkey : std::as_const(serverConfig().hotkeys()))
     ui->listHotkeys->addItem(hotkey.text());
 
-  ui->computerSetupView->setModel(&m_computerSetupModel);
-
   auto &computers = serverConfig().computers();
   auto server = std::ranges::find_if(computers, [this](const Computer &computer) {
     return (computer.name() == serverConfig().getServerName());
@@ -432,71 +422,103 @@ void ServerConfigDialog::loadFromConfig()
   } else {
     server->markAsServer();
   }
-  refreshMonitorTab();
+  refreshLayoutTab();
   updateControls();
 }
 
-void ServerConfigDialog::setupMonitorTab()
+void ServerConfigDialog::setupLayoutTab()
 {
-  m_tabMonitors = new QWidget(this);
-  auto *layout = new QVBoxLayout(m_tabMonitors);
-
-  m_cbMonitorLayout = new QCheckBox(tr("Switch using this monitor arrangement instead of the grid"), m_tabMonitors);
-  layout->addWidget(m_cbMonitorLayout);
+  auto *tab = ui->tabComputers;
+  auto *layout = qobject_cast<QVBoxLayout *>(tab->layout());
 
   auto *help = new QLabel(
       tr("Drag computers so their monitors sit the way they do on your desk. The cursor moves between computers "
          "wherever their monitors touch (highlighted). A computer shows its real monitors once it has connected to "
-         "this server. Hold Shift while dragging to turn off snapping."),
-      m_tabMonitors
+         "this server. Hold Shift while dragging to turn off snapping. Double click a computer to change its "
+         "settings."),
+      tab
   );
   help->setWordWrap(true);
   layout->addWidget(help);
 
-  m_monitorView = new MonitorArrangementView(m_tabMonitors);
-  layout->addWidget(m_monitorView, 1);
+  auto *body = new QHBoxLayout();
+  layout->addLayout(body, 1);
 
-  auto *controls = new QHBoxLayout();
-  m_lblMonitorScale = new QLabel(m_tabMonitors);
-  controls->addWidget(m_lblMonitorScale);
-  m_sbMonitorScale = new QDoubleSpinBox(m_tabMonitors);
+  // the computers, and the settings of the selected one
+  auto *side = new QVBoxLayout();
+  body->addLayout(side);
+
+  m_listComputers = new QListWidget(tab);
+  m_listComputers->setMaximumWidth(240);
+  side->addWidget(m_listComputers, 1);
+
+  auto *listButtons = new QHBoxLayout();
+  m_btnAddComputer = new QPushButton(tr("&Add"), tab);
+  m_btnAddComputer->setToolTip(tr("Add a computer that will connect to this one"));
+  m_btnEditComputer = new QPushButton(tr("&Edit"), tab);
+  m_btnEditComputer->setToolTip(tr("Change the name, aliases, keys and other settings of the selected computer"));
+  m_btnRemoveComputer = new QPushButton(tr("&Remove"), tab);
+  listButtons->addWidget(m_btnAddComputer);
+  listButtons->addWidget(m_btnEditComputer);
+  listButtons->addWidget(m_btnRemoveComputer);
+  side->addLayout(listButtons);
+
+  m_lblMonitorScale = new QLabel(tab);
+  m_lblMonitorScale->setWordWrap(true);
+  side->addWidget(m_lblMonitorScale);
+  m_sbMonitorScale = new QDoubleSpinBox(tab);
   m_sbMonitorScale->setRange(0.1, 10.0);
   m_sbMonitorScale->setSingleStep(0.05);
   m_sbMonitorScale->setDecimals(2);
-  m_sbMonitorScale->setSuffix(QStringLiteral("\u00d7"));
+  m_sbMonitorScale->setSuffix(QStringLiteral("×"));
   m_sbMonitorScale->setToolTip(
       tr("Make this computer's monitors bigger or smaller on the desk, to match their real size next to the others")
   );
-  controls->addWidget(m_sbMonitorScale);
-  controls->addStretch();
-  m_lblMonitorSummary = new QLabel(m_tabMonitors);
-  controls->addWidget(m_lblMonitorSummary);
-  m_btnRearrangeMonitors = new QPushButton(tr("Rearrange"), m_tabMonitors);
-  m_btnRearrangeMonitors->setToolTip(tr("Put every computer back in a row, in grid order"));
-  controls->addWidget(m_btnRearrangeMonitors);
-  layout->addLayout(controls);
+  side->addWidget(m_sbMonitorScale);
 
-  ui->tabWidget->insertTab(1, m_tabMonitors, tr("Monitors"));
+  // the desk
+  auto *deskSide = new QVBoxLayout();
+  body->addLayout(deskSide, 1);
+  m_monitorView = new MonitorArrangementView(tab);
+  deskSide->addWidget(m_monitorView, 1);
 
-  connect(m_cbMonitorLayout, &QCheckBox::toggled, this, &ServerConfigDialog::toggleMonitorLayout);
+  auto *deskControls = new QHBoxLayout();
+  m_lblMonitorSummary = new QLabel(tab);
+  deskControls->addWidget(m_lblMonitorSummary);
+  deskControls->addStretch();
+  m_btnRearrangeMonitors = new QPushButton(tr("Rearrange"), tab);
+  m_btnRearrangeMonitors->setToolTip(tr("Put every computer back in a row, in list order"));
+  deskControls->addWidget(m_btnRearrangeMonitors);
+  deskSide->addLayout(deskControls);
+
+  connect(m_btnAddComputer, &QPushButton::clicked, this, [this] { addComputer({}, false); });
+  connect(m_btnEditComputer, &QPushButton::clicked, this, [this] { editComputer(m_monitorView->selectedComputer()); });
+  connect(m_btnRemoveComputer, &QPushButton::clicked, this, &ServerConfigDialog::removeSelectedComputer);
+  connect(m_listComputers, &QListWidget::currentItemChanged, this, [this](const QListWidgetItem *item) {
+    m_monitorView->setSelectedComputer(item != nullptr ? item->data(Qt::UserRole).toString() : QString());
+  });
+  connect(m_listComputers, &QListWidget::itemActivated, this, [this](const QListWidgetItem *item) {
+    editComputer(item->data(Qt::UserRole).toString());
+  });
   connect(
       m_sbMonitorScale, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &ServerConfigDialog::setMonitorScale
   );
   connect(m_btnRearrangeMonitors, &QPushButton::clicked, this, &ServerConfigDialog::rearrangeMonitors);
   connect(m_monitorView, &MonitorArrangementView::selectionChanged, this, &ServerConfigDialog::monitorSelectionChanged);
+  connect(m_monitorView, &MonitorArrangementView::computerActivated, this, &ServerConfigDialog::editComputer);
   connect(
       m_monitorView, &MonitorArrangementView::arrangementChanged, this, &ServerConfigDialog::monitorArrangementChanged
   );
-  connect(&m_computerSetupModel, &ComputerSetupModel::computersChanged, this, &ServerConfigDialog::refreshMonitorTab);
+  connect(&m_computerSetupModel, &ComputerSetupModel::computersChanged, this, &ServerConfigDialog::refreshLayoutTab);
   connect(Settings::instance(), &Settings::settingsChanged, this, [this](const QString &key) {
     // a computer connected (or changed its displays) while the dialog is open
     if (key.startsWith(QStringLiteral("computer_")) && key.endsWith(QStringLiteral("/monitors"))) {
-      refreshMonitorTab();
+      refreshLayoutTab();
     }
   });
 }
 
-void ServerConfigDialog::refreshMonitorTab()
+void ServerConfigDialog::refreshLayoutTab()
 {
   if (m_monitorView == nullptr) {
     return;
@@ -504,26 +526,80 @@ void ServerConfigDialog::refreshMonitorTab()
   auto &arrangement = serverConfig().arrangement();
   serverConfig().syncArrangement();
 
-  m_cbMonitorLayout->blockSignals(true);
-  m_cbMonitorLayout->setChecked(arrangement.enabled());
-  m_cbMonitorLayout->blockSignals(false);
-
   m_monitorView->setArrangement(&arrangement);
-  m_monitorView->setEnabled(arrangement.enabled());
-  m_btnRearrangeMonitors->setEnabled(arrangement.enabled());
   if (arrangement.computer(m_monitorView->selectedComputer()) == nullptr) {
     m_monitorView->setSelectedComputer({});
   }
+  refreshComputerList();
   monitorSelectionChanged(m_monitorView->selectedComputer());
   setButtonBoxEnabledButtons();
+}
+
+void ServerConfigDialog::refreshComputerList()
+{
+  const QSignalBlocker blocker(m_listComputers);
+  m_listComputers->clear();
+  for (const auto &computer : std::as_const(model().m_computers)) {
+    if (computer.isNull()) {
+      continue;
+    }
+    auto *item = new QListWidgetItem(
+        computer.isServer() ? tr("%1 (this computer)").arg(computer.name()) : computer.name(), m_listComputers
+    );
+    item->setData(Qt::UserRole, computer.name());
+    if (computer.name() == m_monitorView->selectedComputer()) {
+      m_listComputers->setCurrentItem(item);
+    }
+  }
+}
+
+Computer *ServerConfigDialog::findComputer(const QString &name)
+{
+  if (name.isEmpty()) {
+    return nullptr;
+  }
+  auto &computers = model().m_computers;
+  auto it = std::ranges::find_if(computers, [&name](const Computer &c) { return c.name() == name; });
+  return it == computers.end() ? nullptr : &*it;
+}
+
+void ServerConfigDialog::editComputer(const QString &name)
+{
+  auto *computer = findComputer(name);
+  if (computer == nullptr) {
+    return;
+  }
+  if (ComputerSettingsDialog dlg(this, computer, &model().m_computers); dlg.exec() != QDialog::Accepted) {
+    return;
+  }
+
+  if (const auto &newName = computer->name(); newName != name) {
+    // keep its place on the desk, and the monitors it last reported
+    serverConfig().arrangement().renameComputer(name, newName);
+    const auto monitors = Settings::value(Settings::Computer::Monitors.arg(name)).toString();
+    if (!monitors.isEmpty() && Settings::value(Settings::Computer::Monitors.arg(newName)).toString().isEmpty()) {
+      Settings::setValue(Settings::Computer::Monitors.arg(newName), monitors);
+    }
+    m_monitorView->setSelectedComputer(newName);
+  }
+  Q_EMIT model().computersChanged();
+}
+
+void ServerConfigDialog::removeSelectedComputer()
+{
+  auto *computer = findComputer(m_monitorView->selectedComputer());
+  if (computer == nullptr || computer->isServer()) {
+    return;
+  }
+  *computer = Computer();
+  m_monitorView->setSelectedComputer({});
+  Q_EMIT model().computersChanged();
 }
 
 void ServerConfigDialog::updateMonitorSummary() const
 {
   const auto &arrangement = m_serverConfig.arrangement();
-  if (!arrangement.enabled()) {
-    m_lblMonitorSummary->setText(tr("The grid on the Computers tab is used for switching."));
-  } else if (arrangement.hasOverlaps()) {
+  if (arrangement.hasOverlaps()) {
     m_lblMonitorSummary->setText(tr("Monitors overlap."));
   } else {
     const auto crossings = arrangement.contacts().size();
@@ -533,15 +609,6 @@ void ServerConfigDialog::updateMonitorSummary() const
                          : tr("The cursor can cross at %1 places.").arg(crossings)
     );
   }
-}
-
-void ServerConfigDialog::toggleMonitorLayout(bool enable)
-{
-  serverConfig().arrangement().setEnabled(enable);
-  m_monitorView->setEnabled(enable);
-  m_btnRearrangeMonitors->setEnabled(enable);
-  monitorSelectionChanged(m_monitorView->selectedComputer());
-  setButtonBoxEnabledButtons();
 }
 
 void ServerConfigDialog::setMonitorScale(double scale)
@@ -566,16 +633,31 @@ void ServerConfigDialog::rearrangeMonitors()
 void ServerConfigDialog::monitorSelectionChanged(const QString &name)
 {
   const auto *computer = serverConfig().arrangement().computer(name);
-  const bool editable = computer != nullptr && serverConfig().arrangement().enabled();
+  const auto *config = findComputer(name);
+
+  // keep the list in step with clicks on the desk
+  {
+    const QSignalBlocker blocker(m_listComputers);
+    m_listComputers->setCurrentItem(nullptr);
+    for (int i = 0; i < m_listComputers->count(); ++i) {
+      if (m_listComputers->item(i)->data(Qt::UserRole).toString() == name) {
+        m_listComputers->setCurrentRow(i);
+        break;
+      }
+    }
+  }
+
+  m_btnAddComputer->setEnabled(!model().isFull());
+  m_btnEditComputer->setEnabled(config != nullptr);
+  m_btnRemoveComputer->setEnabled(config != nullptr && !config->isServer());
+
   m_lblMonitorScale->setText(
-      computer != nullptr ? tr("Size of %1:").arg(name) : tr("Select a computer to change its size.")
+      computer != nullptr ? tr("Size of %1 on the desk:").arg(name) : tr("Select a computer to change it.")
   );
   m_sbMonitorScale->setVisible(computer != nullptr);
-  m_sbMonitorScale->setEnabled(editable);
   if (computer != nullptr) {
-    m_sbMonitorScale->blockSignals(true);
+    const QSignalBlocker blocker(m_sbMonitorScale);
     m_sbMonitorScale->setValue(computer->scale);
-    m_sbMonitorScale->blockSignals(false);
   }
   updateMonitorSummary();
 }
@@ -592,10 +674,6 @@ void ServerConfigDialog::resetFromSettings()
   m_serverConfig.setConfigFile(m_originalServerConfigUsesExternalFile);
   m_serverConfig.setUseExternalConfig(m_originalServerConfigIsExternal);
   loadFromConfig();
-  if (ui->tabWidget->currentWidget() == ui->tabComputers) {
-    ui->computerSetupView->reset();
-    ui->computerSetupView->update();
-  }
 }
 
 void ServerConfigDialog::refreshControls()
@@ -629,7 +707,6 @@ void ServerConfigDialog::initConnections() const
   connect(m_buttonBox, &SettingsDialogButtonBox::reset, this, &ServerConfigDialog::resetFromSettings);
   connect(m_buttonBox, &SettingsDialogButtonBox::restoreDefault, this, &ServerConfigDialog::restoreFromDefaults);
   connect(ui->tabWidget, &QTabWidget::currentChanged, this, &ServerConfigDialog::setButtonBoxEnabledButtons);
-  connect(ui->lblRemoveComputer, &RemoveComputerWidget::computerRemoved, this, &ServerConfigDialog::onComputerRemoved);
   connect(ui->btnNewHotkey, &QPushButton::clicked, this, &ServerConfigDialog::addHotkey);
   connect(ui->btnEditHotkey, &QPushButton::clicked, this, &ServerConfigDialog::editHotkey);
   connect(ui->btnRemoveHotkey, &QPushButton::clicked, this, &ServerConfigDialog::removeHotkey);
@@ -743,9 +820,10 @@ bool ServerConfigDialog::addComputer(const QString &clientName, bool doSilent)
       doSilent || dlg.exec() == QDialog::Accepted) {
     model().addComputer(newComputer);
     isAccepted = true;
+    if (m_monitorView != nullptr) {
+      m_monitorView->setSelectedComputer(newComputer.name());
+    }
   }
-
-  ui->lblNewComputer->setEnabled(!model().isFull());
   return isAccepted;
 }
 
