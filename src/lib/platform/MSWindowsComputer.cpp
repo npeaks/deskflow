@@ -31,6 +31,7 @@
 #include <Shlobj.h>
 #include <algorithm>
 #include <comutil.h>
+#include <cstdlib>
 #include <string.h>
 
 // suppress warning about GetVersionEx, which is used indirectly in this
@@ -1264,9 +1265,36 @@ bool MSWindowsComputer::onMouseMove(int32_t mx, int32_t my)
     // it's probably a bogus motion that we want to
     // ignore (see warpCursorNoFlush() for a further
     // description).
+    //
+    // measure to the edges of the monitor the center is on, not of the
+    // whole desktop.  with several monitors the desktop's edges can be far
+    // beyond the monitor's, so a bogus motion from an inner monitor edge
+    // that leads to a client (e.g. the bottom of a monitor with a taller
+    // one beside it) would get through and throw the client's cursor
+    // across its screen right after entering it.
     static int32_t bogusZoneSize = 10;
-    if (-x + bogusZoneSize > m_xCenter - m_x || x + bogusZoneSize > m_x + m_w - m_xCenter ||
-        -y + bogusZoneSize > m_yCenter - m_y || y + bogusZoneSize > m_y + m_h - m_yCenter) {
+    int32_t toLeft = m_xCenter - m_x;
+    int32_t toRight = m_x + m_w - m_xCenter;
+    int32_t toTop = m_yCenter - m_y;
+    int32_t toBottom = m_y + m_h - m_yCenter;
+    if (const int i = deskflow::monitors::find(m_monitors, m_xCenter, m_yCenter); i >= 0) {
+      const auto &monitor = m_monitors[i];
+      toLeft = m_xCenter - monitor.x;
+      toRight = monitor.x + monitor.w - m_xCenter;
+      toTop = m_yCenter - monitor.y;
+      toBottom = monitor.y + monitor.h - m_yCenter;
+    }
+    //
+    // a bogus motion isn't always from an edge, either: crossing into dead
+    // space between monitors (e.g. off the side of a tall monitor, below a
+    // shorter one) leaves windows' cursor wherever it clamped it, which can
+    // be anywhere.  every real motion is measured from the center we just
+    // warped to, and is tiny, so anything more than half way to an edge is
+    // bogus too.
+    const int32_t limitX = (std::min)(toLeft, toRight) / 2;
+    const int32_t limitY = (std::min)(toTop, toBottom) / 2;
+    if (-x + bogusZoneSize > toLeft || x + bogusZoneSize > toRight || -y + bogusZoneSize > toTop ||
+        y + bogusZoneSize > toBottom || std::abs(x) > limitX || std::abs(y) > limitY) {
 
       LOG_DEBUG("dropped bogus delta motion: %+d,%+d", x, y);
     } else {
